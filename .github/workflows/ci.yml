@@ -8,27 +8,23 @@ on:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint (RuboCop)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: ruby/setup-ruby@v1
         with:
-          python-version: "3.12"
-      - name: Install lint dependencies
-        run: pip install ruff mypy pydantic[mypy] pydantic-settings sqlalchemy asyncpg python-jose[cryptography] httpx google-auth
-      - name: Ruff check
-        run: ruff check .
-      - name: Ruff format
-        run: ruff format --check .
-      - name: Mypy
-        run: mypy app/
+          ruby-version: "3.2.3"
+          bundler-cache: true
+          working-directory: backend
+      - name: RuboCop
+        run: bundle exec rubocop --parallel
 
   test:
-    name: Test
+    name: Test (RSpec)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,21 +44,20 @@ jobs:
         ports:
           - 5432:5432
     env:
-      DATABASE_URL: postgresql+asyncpg://classhelper:classhelpertest@localhost:5432/classhelper_test
-      TEST_DATABASE_URL: postgresql+asyncpg://classhelper:classhelpertest@localhost:5432/classhelper_test
-      SECRET_KEY: ci-secret-key
+      DATABASE_URL: postgresql://classhelper:classhelpertest@localhost:5432/classhelper_test
+      SECRET_KEY_BASE: ci-secret-key-base-64chars-minimum-placeholder-padding-padding1
       GOOGLE_CLIENT_ID: test-client-id
       GOOGLE_CLIENT_SECRET: test-client-secret
+      GOOGLE_REDIRECT_URI: http://localhost:3000/auth/callback
+      RAILS_ENV: test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: ruby/setup-ruby@v1
         with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          ruby-version: "3.2.3"
+          bundler-cache: true
+          working-directory: backend
       - name: Run migrations
-        run: alembic upgrade head
+        run: bundle exec rails db:migrate
       - name: Run tests
-        run: pytest --cov=app --cov-report=term-missing
+        run: bundle exec rspec --format documentation

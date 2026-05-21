@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
 
-alembic upgrade head
+bundle exec rails db:migrate
 
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+exec bundle exec puma -C config/puma.rb

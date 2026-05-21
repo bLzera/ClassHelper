@@ -1,25 +1,19 @@
 # Env
 .env
 
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-*.egg-info/
-dist/
-build/
-.mypy_cache/
-.ruff_cache/
+# Ruby / Rails
+/backend/.bundle/
+/backend/log/*.log
+/backend/tmp/
+/backend/vendor/bundle/
+/backend/public/assets
+/backend/storage/
+/backend/.byebug_history
 
-# Alembic
-alembic/versions/*.pyc
+# Gemfile.lock não é commitado em libs, mas em apps SIM — não ignorar
 
 # Coverage
-.coverage
-htmlcov/
-coverage.xml
+/backend/coverage/
 
 # IDE
 .vscode/
