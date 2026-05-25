@@ -165,14 +165,13 @@ backend/
 
 ### Esqueleto (sem lógica — próximas implementações)
 
-> **Próximo épico recomendado: B-2** (`POST /assignments/sync`, que já inclui o cálculo de `auto_priority` de C-2) — ordem: B-2 (+C-2) → F-1 → B-4
+> **Próximo épico recomendado: F-1** (`GET /dashboard`) — ordem restante: F-1 → B-4 → F-2
 >
-> Racional: o `GET /dashboard` (F-1) ordena por `COALESCE(manual_priority, auto_priority)`. Sem B-2 rodado, `auto_priority` é sempre `NULL` e o dashboard não tem inteligência de prazo. Por isso B-2 vem antes de F-1.
+> Racional: B-2 (+C-2) já foi implementado, então `auto_priority` é calculado no sync. O `GET /dashboard` (F-1) agora pode ordenar por `COALESCE(manual_priority, auto_priority)` com inteligência de prazo real.
 
 | Controller | Épico | Endpoint |
 |---|---|---|
-| `assignments_controller.rb#sync` | B-2 | `POST /assignments/sync` ← próximo |
-| `dashboard_controller.rb#index` | F-1 | `GET /dashboard` |
+| `dashboard_controller.rb#index` | F-1 | `GET /dashboard` ← próximo |
 
 ---
 
@@ -206,7 +205,7 @@ backend/
 - Lógica: chama `GET https://classroom.googleapis.com/v1/courses` com o access_token do usuário; upsert via `google_course_id`
 - Response 200: `{ "synced": Integer, "courses": Array }`
 
-### `POST /assignments/sync` (Épico B-2 — pendente)
+### `POST /assignments/sync` (Épico B-2 — ✅ feito)
 - Auth: `Bearer <jwt>` obrigatório
 - Lógica: para cada course, chama `GET https://classroom.googleapis.com/v1/courses/:id/courseWork`; upsert; calcula `auto_priority` por prazo
 - Response 200: `{ "synced": Integer }`
@@ -233,10 +232,10 @@ backend/
 | A | A-2 | ✅ Feito | JWT stateless — create/decode |
 | A | A-4 | ✅ Feito | `authenticate_user!` before_action |
 | B | B-1 | ✅ Feito | `POST /courses/sync` — busca cursos no Classroom e faz upsert |
-| B | B-2 | Pendente | `POST /assignments/sync` — busca tarefas no Classroom e faz upsert |
+| B | B-2 | ✅ Feito | `POST /assignments/sync` — busca tarefas no Classroom e faz upsert |
 | B | B-4 | Pendente | Renovação de `access_token` via `refresh_token` quando expirar |
 | C | C-1 | ✅ Feito | `PATCH /assignments/:id/priority` — prioridade manual |
-| C | C-2 | Pendente | Cálculo de `auto_priority` por prazo (executado no sync) |
+| C | C-2 | ✅ Feito | Cálculo de `auto_priority` por prazo (executado no sync) |
 | F | F-1 | Pendente | `GET /dashboard` — assignments ordenados por prioridade efetiva |
 | F | F-2 | Pendente | Frontend Vue.js — dashboard principal |
 
