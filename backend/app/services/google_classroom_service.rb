@@ -20,4 +20,15 @@ class GoogleClassroomService
 
     response.parsed_response.fetch("courses", [])
   end
+
+  def fetch_course_work(course_id)
+    response = HTTParty.get(
+      "https://classroom.googleapis.com/v1/courses/#{course_id}/courseWork",
+      headers: { "Authorization" => "Bearer #{@access_token}" }
+    )
+
+    raise ApiError, "Classroom API error #{response.code}: #{response.body}" unless response.success?
+
+    response.parsed_response.fetch("courseWork", [])
+  end
 end
