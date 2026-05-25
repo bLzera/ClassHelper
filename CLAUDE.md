@@ -148,14 +148,19 @@ backend/
 | `spec/requests/health_spec.rb` | Teste do `GET /health` |
 | `spec/requests/courses_spec.rb` | 6 testes do `POST /courses/sync` (WebMock) |
 | `spec/services/jwt_service_spec.rb` | 5 testes do JwtService (encode, decode, expiração, erros) |
+| `app/controllers/assignments_controller.rb` | `PATCH /assignments/:id/priority` — prioridade manual (C-1) |
+| `spec/factories/courses.rb` | Factory FactoryBot para Course |
+| `spec/factories/assignments.rb` | Factory FactoryBot para Assignment |
+| `spec/requests/assignments_spec.rb` | 8 testes do `PATCH /assignments/:id/priority` |
 
 ### Esqueleto (sem lógica — próximas implementações)
+
+> **Próximo épico recomendado: F-1** (`GET /dashboard`) — ordem: F-1 → B-2 → C-2 → B-4
 
 | Controller | Épico | Endpoint |
 |---|---|---|
 | `assignments_controller.rb#sync` | B-2 | `POST /assignments/sync` |
-| `assignments_controller.rb#update_priority` | C-1 | `PATCH /assignments/:id/priority` |
-| `dashboard_controller.rb#index` | F-1 | `GET /dashboard` |
+| `dashboard_controller.rb#index` | F-1 | `GET /dashboard` ← próximo |
 
 ---
 
