@@ -15,3 +15,15 @@ Style/Documentation:
 
 Style/FrozenStringLiteralComment:
   Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+RSpec/ContextWording:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Max: 3
+
+RSpec/ExampleLength:
+  Max: 10

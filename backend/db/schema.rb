@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_20_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_24_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -38,6 +38,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_20_000001) do
     t.string "section", limit: 255
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["user_id", "google_course_id"], name: "index_courses_on_user_id_and_google_course_id", unique: true
     t.index ["user_id"], name: "index_courses_on_user_id"
   end
 

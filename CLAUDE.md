@@ -106,16 +106,21 @@ backend/
 │   │   └── assignment.rb               # belongs_to course, user
 │   └── services/
 │       ├── jwt_service.rb              # create_access_token / decode_access_token (HS256, 30 min)
-│       └── google_oauth_service.rb     # authorization_url, exchange_code, fetch_userinfo
+│       ├── google_oauth_service.rb     # authorization_url, exchange_code, fetch_userinfo
+│       └── google_classroom_service.rb # fetch_courses — GET /v1/courses (courseStates=ACTIVE)
 ├── config/
 │   ├── routes.rb                       # todos os endpoints mapeados
 │   ├── database.yml
 │   └── initializers/cors.rb
 ├── db/
 │   └── migrate/
-│       └── 20260520000001_create_initial_schema.rb
+│       ├── 20260520000001_create_initial_schema.rb
+│       └── 20260524000001_add_unique_index_to_courses.rb  # índice único (user_id, google_course_id)
 └── spec/
-    ├── requests/health_spec.rb
+    ├── factories/users.rb
+    ├── requests/
+    │   ├── health_spec.rb
+    │   └── courses_spec.rb
     └── services/jwt_service_spec.rb
 ```
 
@@ -132,18 +137,22 @@ backend/
 | `app/models/assignment.rb` | Model `Assignment` — manual_priority, auto_priority, due_date, state |
 | `app/services/jwt_service.rb` | `create_access_token` / `decode_access_token` — JWT HS256, 30 min |
 | `app/services/google_oauth_service.rb` | Chamadas à API Google — authorization_url, exchange_code, fetch_userinfo |
+| `app/services/google_classroom_service.rb` | `fetch_courses` — GET /v1/courses com access_token do usuário |
 | `app/controllers/application_controller.rb` | `authenticate_user!` — extrai e valida JWT do header `Authorization: Bearer` |
 | `app/controllers/auth_controller.rb` | Fluxo OAuth completo: login → callback (upsert user, emite JWT) → me |
+| `app/controllers/courses_controller.rb` | `POST /courses/sync` — upsert de cursos via google_course_id |
 | `app/controllers/health_controller.rb` | `GET /health` → `{ status: "ok" }` |
 | `db/migrate/20260520000001_create_initial_schema.rb` | Cria tabelas users, courses, assignments com UUID PKs (pgcrypto) |
+| `db/migrate/20260524000001_add_unique_index_to_courses.rb` | Índice único em `(user_id, google_course_id)` |
+| `spec/factories/users.rb` | Factory FactoryBot para User |
 | `spec/requests/health_spec.rb` | Teste do `GET /health` |
+| `spec/requests/courses_spec.rb` | 6 testes do `POST /courses/sync` (WebMock) |
 | `spec/services/jwt_service_spec.rb` | 5 testes do JwtService (encode, decode, expiração, erros) |
 
 ### Esqueleto (sem lógica — próximas implementações)
 
 | Controller | Épico | Endpoint |
 |---|---|---|
-| `courses_controller.rb#sync` | B-1 | `POST /courses/sync` |
 | `assignments_controller.rb#sync` | B-2 | `POST /assignments/sync` |
 | `assignments_controller.rb#update_priority` | C-1 | `PATCH /assignments/:id/priority` |
 | `dashboard_controller.rb#index` | F-1 | `GET /dashboard` |
@@ -206,7 +215,7 @@ backend/
 | A | A-1 | ✅ Feito | OAuth 2.0 Google — login, callback, me |
 | A | A-2 | ✅ Feito | JWT stateless — create/decode |
 | A | A-4 | ✅ Feito | `authenticate_user!` before_action |
-| B | B-1 | Pendente | `POST /courses/sync` — busca cursos no Classroom e faz upsert |
+| B | B-1 | ✅ Feito | `POST /courses/sync` — busca cursos no Classroom e faz upsert |
 | B | B-2 | Pendente | `POST /assignments/sync` — busca tarefas no Classroom e faz upsert |
 | B | B-4 | Pendente | Renovação de `access_token` via `refresh_token` quando expirar |
 | C | C-1 | Pendente | `PATCH /assignments/:id/priority` — prioridade manual |
