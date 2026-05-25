@@ -165,11 +165,11 @@ backend/
 
 ### Esqueleto (sem lógica — próximas implementações)
 
-> **Próximo épico recomendado: B-4** (renovação de `access_token` via `refresh_token`) — ordem restante: B-4 → F-2
+> **Próximo épico recomendado: F-2** (Frontend Vue.js — dashboard principal) — único item restante do MVP.
 >
-> Racional: F-1 (`GET /dashboard`) foi implementado. Resta robustez de auth (B-4) antes de partir para o frontend (F-2).
+> Racional: todo o backend do MVP está concluído (auth, sync, prioridade, dashboard e renovação de token via B-4). Resta apenas o frontend.
 
-_Nenhum controller de backend pendente além de B-4 (renovação de token, sem novo endpoint)._
+_Backend do MVP completo — nenhum controller de backend pendente._
 
 ---
 
@@ -231,7 +231,7 @@ _Nenhum controller de backend pendente além de B-4 (renovação de token, sem n
 | A | A-4 | ✅ Feito | `authenticate_user!` before_action |
 | B | B-1 | ✅ Feito | `POST /courses/sync` — busca cursos no Classroom e faz upsert |
 | B | B-2 | ✅ Feito | `POST /assignments/sync` — busca tarefas no Classroom e faz upsert |
-| B | B-4 | Pendente | Renovação de `access_token` via `refresh_token` quando expirar |
+| B | B-4 | ✅ Feito | Renovação de `access_token` via `refresh_token` quando expirar |
 | C | C-1 | ✅ Feito | `PATCH /assignments/:id/priority` — prioridade manual |
 | C | C-2 | ✅ Feito | Cálculo de `auto_priority` por prazo (executado no sync) |
 | F | F-1 | ✅ Feito | `GET /dashboard` — assignments ordenados por prioridade efetiva |
