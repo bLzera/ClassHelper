@@ -155,12 +155,14 @@ backend/
 
 ### Esqueleto (sem lógica — próximas implementações)
 
-> **Próximo épico recomendado: F-1** (`GET /dashboard`) — ordem: F-1 → B-2 → C-2 → B-4
+> **Próximo épico recomendado: B-2** (`POST /assignments/sync`, que já inclui o cálculo de `auto_priority` de C-2) — ordem: B-2 (+C-2) → F-1 → B-4
+>
+> Racional: o `GET /dashboard` (F-1) ordena por `COALESCE(manual_priority, auto_priority)`. Sem B-2 rodado, `auto_priority` é sempre `NULL` e o dashboard não tem inteligência de prazo. Por isso B-2 vem antes de F-1.
 
 | Controller | Épico | Endpoint |
 |---|---|---|
-| `assignments_controller.rb#sync` | B-2 | `POST /assignments/sync` |
-| `dashboard_controller.rb#index` | F-1 | `GET /dashboard` ← próximo |
+| `assignments_controller.rb#sync` | B-2 | `POST /assignments/sync` ← próximo |
+| `dashboard_controller.rb#index` | F-1 | `GET /dashboard` |
 
 ---
 

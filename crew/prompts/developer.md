@@ -40,7 +40,9 @@ Você é um desenvolvedor Rails sênior implementando uma feature no projeto Cla
 
 ---
 
-## Critérios de aceitação (os specs devem cobrir isso)
+## Critérios de aceitação — CONTRATO DE TESTES (vinculante)
+
+Os critérios abaixo **são** a especificação dos testes. Não são sugestões nem um mínimo a partir do qual você escolhe o que cobrir: cada item é um spec obrigatório que **deve existir** e passar. Você escreve os specs para satisfazer exatamente estes casos — não invente comportamento não descrito aqui, e não omita nenhum caso. Se um critério for ambíguo, implemente a interpretação mais conservadora e anote a suposição no output.
 
 {{ACCEPTANCE_CRITERIA}}
 

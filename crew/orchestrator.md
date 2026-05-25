@@ -6,9 +6,16 @@ Quando o usuário pedir "implementa o épico X", execute os passos abaixo em ord
 
 ## Pré-condições
 
-Antes de começar, verificar:
-- Docker DB rodando: `docker compose up db -d` (na raiz do projeto)
-- Branch atual é `main` e está limpa (`git status`)
+Antes de começar, verificar (preflight):
+
+1. **Resolver a raiz do projeto de forma portável.** Nunca use paths absolutos hard-coded — o repositório vive em máquinas diferentes. Sempre derive a raiz com:
+   ```bash
+   ROOT="$(git rev-parse --show-toplevel)"
+   ```
+   Se o comando falhar (não estamos num repositório git), **aborte** e reporte ao usuário. Todos os comandos abaixo usam `"$ROOT/..."`.
+2. Sanidade do checkout: `test -d "$ROOT/backend" && test -f "$ROOT/CLAUDE.md"` — se falhar, aborte (estrutura inesperada).
+3. Docker DB rodando: `docker compose up db -d` (rodar a partir de `"$ROOT"`)
+4. Branch atual é `main` e está limpa (`git status`)
 
 ---
 
@@ -42,7 +49,7 @@ O agente implementa o código e os specs. **Não commita, não roda testes.**
 ## Passo 3 — Rodar rspec
 
 ```bash
-cd /home/blzera/projetos/ClassHelper/backend && \
+cd "$(git rev-parse --show-toplevel)/backend" && \
 TEST_DATABASE_URL=postgresql://classhelper:changeme@localhost:5433/classhelper_test \
 RAILS_ENV=test bundle exec rspec --format documentation 2>&1
 ```
@@ -55,7 +62,7 @@ RAILS_ENV=test bundle exec rspec --format documentation 2>&1
 ## Passo 4 — Rodar rubocop
 
 ```bash
-cd /home/blzera/projetos/ClassHelper/backend && \
+cd "$(git rev-parse --show-toplevel)/backend" && \
 bundle exec rubocop --parallel 2>&1
 ```
 
@@ -104,7 +111,7 @@ Perguntar: "O diff está aprovado para commit e merge?"
 ### Commit na branch do épico
 
 ```bash
-cd /home/blzera/projetos/ClassHelper/backend
+cd "$(git rev-parse --show-toplevel)"
 git add <arquivos_listados_pelo_developer>
 git commit -m "feat: <descrição gerada pelo developer — uma linha>"
 ```
@@ -121,7 +128,7 @@ git branch -d epic/<X>
 
 ### Atualizar CLAUDE.md
 
-No arquivo `/home/blzera/projetos/ClassHelper/CLAUDE.md`, na tabela de backlog, substituir:
+No arquivo `"$ROOT/CLAUDE.md"`, na tabela de backlog, substituir:
 ```
 | <X> | Pendente |
 ```
