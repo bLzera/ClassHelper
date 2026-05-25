@@ -2,9 +2,11 @@ class AssignmentsController < ApplicationController
   before_action :authenticate_user!
 
   def sync
-    service = GoogleClassroomService.new(access_token: current_user.google_access_token)
+    service = GoogleClassroomService.new(user: current_user)
     synced = upsert_assignments(service)
     render json: { synced: synced }, status: :ok
+  rescue GoogleClassroomService::TokenExpiredError => e
+    render json: { error: "token_expired", message: e.message }, status: :unauthorized
   rescue GoogleClassroomService::ApiError => e
     render json: { error: "classroom_api_error", message: e.message }, status: :bad_gateway
   end
@@ -20,16 +22,19 @@ class AssignmentsController < ApplicationController
   private
 
   def upsert_assignments(service)
-    count = 0
-    ActiveRecord::Base.transaction do
-      current_user.courses.find_each do |course|
-        service.fetch_course_work(course.google_course_id).each do |cw|
-          build_assignment(course, cw)
-          count += 1
-        end
-      end
+    current_user.courses.find_each.sum do |course|
+      # A busca HTTP fica fora da transação: um refresh malsucedido limpa os
+      # tokens do usuário e essa limpeza não pode ser desfeita por rollback.
+      course_work = service.fetch_course_work(course.google_course_id)
+      upsert_course_work(course, course_work)
     end
-    count
+  end
+
+  def upsert_course_work(course, course_work)
+    ActiveRecord::Base.transaction do
+      course_work.each { |cw| build_assignment(course, cw) }
+    end
+    course_work.size
   end
 
   def build_assignment(course, course_work)

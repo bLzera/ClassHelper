@@ -172,10 +172,10 @@ RSpec.describe "Assignments", type: :request do
       end
     end
 
-    context "quando a API do Classroom retorna erro" do
+    context "quando a API do Classroom retorna erro não-401" do
       before do
         stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
-          .to_return(status: 401, body: '{"error":"invalid_credentials"}',
+          .to_return(status: 500, body: '{"error":"internal"}',
                      headers: { "Content-Type" => "application/json" })
       end
 
@@ -185,6 +185,77 @@ RSpec.describe "Assignments", type: :request do
         expect(response).to have_http_status(:bad_gateway)
         expect(response.parsed_body["error"]).to eq("classroom_api_error")
         expect(response.parsed_body["message"]).to be_a(String)
+      end
+    end
+
+    context "quando o access_token expirou (401) e há refresh_token" do
+      let(:user) do
+        create(:user, google_access_token: "fake-google-token",
+                      google_refresh_token: "valid-refresh-token")
+      end
+
+      before do
+        # 1ª chamada com o token expirado → 401
+        stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
+          .with(headers: { "Authorization" => "Bearer fake-google-token" })
+          .to_return(status: 401, body: '{"error":"invalid_credentials"}',
+                     headers: { "Content-Type" => "application/json" })
+
+        # refresh do token
+        stub_request(:post, "https://oauth2.googleapis.com/token")
+          .with(body: hash_including(grant_type: "refresh_token",
+                                     refresh_token: "valid-refresh-token"))
+          .to_return(status: 200,
+                     body: { access_token: "novo-token", expires_in: 3599 }.to_json,
+                     headers: { "Content-Type" => "application/json" })
+
+        # retry com o novo token → sucesso
+        stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
+          .with(headers: { "Authorization" => "Bearer novo-token" })
+          .to_return(status: 200,
+                     body: { courseWork: [{ id: "a1", title: "Lista 1", state: "PUBLISHED" }] }.to_json,
+                     headers: { "Content-Type" => "application/json" })
+      end
+
+      it "renova o token e retorna 200 com synced" do
+        post "/assignments/sync", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["synced"]).to eq(1)
+      end
+
+      it "persiste o novo access_token no usuário" do
+        post "/assignments/sync", headers: headers
+
+        expect(user.reload.google_access_token).to eq("novo-token")
+      end
+    end
+
+    context "quando o access_token expirou (401) e o refresh falha" do
+      let(:user) do
+        create(:user, google_access_token: "fake-google-token",
+                      google_refresh_token: "revoked-refresh-token")
+      end
+
+      before do
+        stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
+          .to_return(status: 401, body: '{"error":"invalid_credentials"}',
+                     headers: { "Content-Type" => "application/json" })
+
+        stub_request(:post, "https://oauth2.googleapis.com/token")
+          .to_return(status: 400, body: '{"error":"invalid_grant"}',
+                     headers: { "Content-Type" => "application/json" })
+      end
+
+      it "limpa os tokens e retorna 401 token_expired" do
+        post "/assignments/sync", headers: headers
+
+        aggregate_failures do
+          expect(response).to have_http_status(:unauthorized)
+          expect(response.parsed_body["error"]).to eq("token_expired")
+          expect(user.reload.google_access_token).to be_nil
+          expect(user.reload.google_refresh_token).to be_nil
+        end
       end
     end
 

@@ -2,9 +2,11 @@ class CoursesController < ApplicationController
   before_action :authenticate_user!
 
   def sync
-    service = GoogleClassroomService.new(access_token: current_user.google_access_token)
+    service = GoogleClassroomService.new(user: current_user)
     courses = upsert_courses(service.fetch_courses)
     render json: { synced: courses.size, courses: courses.as_json(only: %i[id google_course_id name section]) }
+  rescue GoogleClassroomService::TokenExpiredError => e
+    render json: { error: "token_expired", message: e.message }, status: :unauthorized
   rescue GoogleClassroomService::ApiError => e
     render json: { error: "classroom_api_error", message: e.message }, status: :bad_gateway
   end
