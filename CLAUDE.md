@@ -165,13 +165,11 @@ backend/
 
 ### Esqueleto (sem lógica — próximas implementações)
 
-> **Próximo épico recomendado: F-1** (`GET /dashboard`) — ordem restante: F-1 → B-4 → F-2
+> **Próximo épico recomendado: B-4** (renovação de `access_token` via `refresh_token`) — ordem restante: B-4 → F-2
 >
-> Racional: B-2 (+C-2) já foi implementado, então `auto_priority` é calculado no sync. O `GET /dashboard` (F-1) agora pode ordenar por `COALESCE(manual_priority, auto_priority)` com inteligência de prazo real.
+> Racional: F-1 (`GET /dashboard`) foi implementado. Resta robustez de auth (B-4) antes de partir para o frontend (F-2).
 
-| Controller | Épico | Endpoint |
-|---|---|---|
-| `dashboard_controller.rb#index` | F-1 | `GET /dashboard` ← próximo |
+_Nenhum controller de backend pendente além de B-4 (renovação de token, sem novo endpoint)._
 
 ---
 
@@ -217,7 +215,7 @@ backend/
 - Response 200: assignment atualizado
 - Response 404: `{ "error": "not_found" }`
 
-### `GET /dashboard` (Épico F-1 — pendente)
+### `GET /dashboard` (Épico F-1 — ✅ feito)
 - Auth: `Bearer <jwt>` obrigatório
 - Lógica: `current_user.assignments.where(state: "CREATED")` ordenados por prioridade efetiva (`manual_priority || auto_priority`, menor número = maior prioridade)
 - Response 200: `{ "assignments": Array }`
@@ -236,7 +234,7 @@ backend/
 | B | B-4 | Pendente | Renovação de `access_token` via `refresh_token` quando expirar |
 | C | C-1 | ✅ Feito | `PATCH /assignments/:id/priority` — prioridade manual |
 | C | C-2 | ✅ Feito | Cálculo de `auto_priority` por prazo (executado no sync) |
-| F | F-1 | Pendente | `GET /dashboard` — assignments ordenados por prioridade efetiva |
+| F | F-1 | ✅ Feito | `GET /dashboard` — assignments ordenados por prioridade efetiva |
 | F | F-2 | Pendente | Frontend Vue.js — dashboard principal |
 
 ---
