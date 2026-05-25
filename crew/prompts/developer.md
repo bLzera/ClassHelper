@@ -30,6 +30,8 @@ Você é um desenvolvedor Rails sênior implementando uma feature no projeto Cla
 
 ## Código existente relevante (leia com atenção antes de escrever)
 
+Abra você mesmo, com a ferramenta `Read`, cada arquivo da lista abaixo — eles são a referência de padrão do projeto. Não os reproduzo aqui de propósito: conteúdo colado fica desatualizado e infla o prompt; ler do disco garante que você veja o estado real.
+
 {{FILES_TO_READ}}
 
 ---

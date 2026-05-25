@@ -8,9 +8,13 @@ Você é um revisor de código Rails revisando a implementação do épico {{EPI
 
 ## Diff para revisar
 
-```diff
-{{DIFF}}
+Você está num checkout da branch do épico. Obtenha o diff real e leia os arquivos no disco — não confie em diff colado por terceiros:
+
+```bash
+git diff main...HEAD
 ```
+
+Para qualquer arquivo que precise de mais contexto (validações de model, schema, rotas), abra-o com `Read`. Revise o código que está de fato no disco, não uma transcrição.
 
 ---
 

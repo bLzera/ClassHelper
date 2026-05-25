@@ -14,7 +14,7 @@ Antes de começar, verificar (preflight):
    ```
    Se o comando falhar (não estamos num repositório git), **aborte** e reporte ao usuário. Todos os comandos abaixo usam `"$ROOT/..."`.
 2. Sanidade do checkout: `test -d "$ROOT/backend" && test -f "$ROOT/CLAUDE.md"` — se falhar, aborte (estrutura inesperada).
-3. Docker DB rodando: `docker compose up db -d` (rodar a partir de `"$ROOT"`)
+3. Containers Docker no ar: `docker compose up -d` (rodar a partir de `"$ROOT"`). Subir `db` **e** `backend` — quando o bundle local não está íntegro, `run-tests.sh`/`run-lint.sh` (Passos 3 e 4) executam dentro do container `backend` via `docker compose exec`.
 4. Branch atual é `main` e está limpa (`git status`)
 
 ---
@@ -35,7 +35,7 @@ Antes de começar, verificar (preflight):
 Construir o prompt preenchendo `crew/prompts/developer.md` com os valores do épico:
 - `{{EPIC_ID}}` → ex: `C-1`
 - `{{EPIC_SPEC}}` → spec do endpoint do epic file
-- `{{FILES_TO_READ}}` → lista do epic file (já lidos no passo 1, incluir o conteúdo)
+- `{{FILES_TO_READ}}` → **apenas a lista de paths** do epic file (não cole o conteúdo — o Developer Agent abre cada arquivo com `Read` por conta própria)
 - `{{FILES_TO_CREATE_OR_MODIFY}}` → lista do epic file
 - `{{ACCEPTANCE_CRITERIA}}` → critérios do epic file
 - `{{RETRY_CONTEXT}}` → vazio na primeira tentativa; nos retries, incluir o output de erro do rspec/rubocop/feedback humano
@@ -44,17 +44,19 @@ Spawnar com `Agent(subagent_type="general-purpose", prompt=<prompt_preenchido>)`
 
 O agente implementa o código e os specs. **Não commita, não roda testes.**
 
+**Sobre retries:** cada retry (vindo dos Passos 3, 4, 5 ou 6) spawna um Developer Agent **novo** — não há continuação de sessão de agente neste ambiente (`SendMessage` não está disponível). No retry, o prompt deve ser **enxuto**: apenas o `{{RETRY_CONTEXT}}` (output cru do rspec/rubocop ou o feedback humano) + o `{{EPIC_ID}}` + instrução para ler a branch atual com `Read`/`git diff`. **Não** re-cole todo o contexto de arquivos do primeiro spawn — o código já está na branch e o agente o lê sozinho.
+
 ---
 
 ## Passo 3 — Rodar rspec
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/backend" && \
-TEST_DATABASE_URL=postgresql://classhelper:changeme@localhost:5433/classhelper_test \
-RAILS_ENV=test bundle exec rspec --format documentation 2>&1
+"$(git rev-parse --show-toplevel)/crew/run-tests.sh" --format documentation 2>&1
 ```
 
-- **Passou:** ir para o Passo 4
+O script `run-tests.sh` é portável: detecta sozinho se roda no host (bundle local íntegro) ou dentro do container Docker `backend` (fallback), e prepara o banco de teste (`db:prepare`) antes de rodar. **Não** chame `bundle exec rspec` direto — o ambiente do host varia entre máquinas e pode não ter o bundle completo.
+
+- **Passou (exit 0):** ir para o Passo 4
 - **Falhou:** incrementar `attempts`. Se `attempts < 3`, voltar ao Passo 2 com o output de erro em `{{RETRY_CONTEXT}}`. Se `attempts >= 3`, ir para **Abort**.
 
 ---
@@ -62,11 +64,12 @@ RAILS_ENV=test bundle exec rspec --format documentation 2>&1
 ## Passo 4 — Rodar rubocop
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/backend" && \
-bundle exec rubocop --parallel 2>&1
+"$(git rev-parse --show-toplevel)/crew/run-lint.sh" 2>&1
 ```
 
-- **Limpo (no offenses):** ir para o Passo 5
+O script `run-lint.sh` linta **apenas os arquivos `.rb` que o épico alterou** (diff `main...HEAD`), não o repo inteiro. Isso é proposital: `main` carrega offenses pré-existentes, então o gate é *"o épico não introduz offenses no que toca"*, e não *"zero offenses no repo"*. Mesma detecção host-vs-container do `run-tests.sh`.
+
+- **Limpo (exit 0, no offenses nos arquivos do épico):** ir para o Passo 5
 - **Com offenses:** incrementar `attempts`. Se `attempts < 3`, voltar ao Passo 2 com o output do rubocop em `{{RETRY_CONTEXT}}`. Se `attempts >= 3`, ir para **Abort**.
 
 ---
@@ -76,14 +79,16 @@ bundle exec rubocop --parallel 2>&1
 Para épicos simples (C-1, F-1) o orquestrador pode revisar diretamente.
 Para épicos complexos (B-2, B-4), spawnar o Reviewer Agent:
 
-Obter o diff:
+Antes de qualquer coisa, garanta que arquivos **novos** (untracked) entrem no diff — `git diff` sozinho não os mostra:
 ```bash
-git diff main...epic/<X>
+git add -A
+git diff main...HEAD   # confirme que o diff cobre tudo, inclusive arquivos novos
 ```
 
 Construir o prompt preenchendo `crew/prompts/reviewer.md` com:
 - `{{EPIC_ID}}` → ex: `B-2`
-- `{{DIFF}}` → output do git diff
+
+O Reviewer Agent roda `git diff main...HEAD` e lê os arquivos no disco por conta própria (ver `crew/prompts/reviewer.md`) — **não** cole o diff no prompt.
 
 Spawnar com `Agent(subagent_type="general-purpose", prompt=<prompt_preenchido>)`.
 
@@ -94,9 +99,9 @@ Spawnar com `Agent(subagent_type="general-purpose", prompt=<prompt_preenchido>)`
 
 ## Passo 6 — Checkpoint humano
 
-Mostrar o diff para o usuário:
+Mostrar o diff para o usuário (com `git add -A` já feito no Passo 5, arquivos novos aparecem):
 ```bash
-git diff main...epic/<X>
+git diff main...HEAD
 ```
 
 Perguntar: "O diff está aprovado para commit e merge?"
