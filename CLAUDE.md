@@ -218,7 +218,7 @@ backend/
 | B | B-1 | ✅ Feito | `POST /courses/sync` — busca cursos no Classroom e faz upsert |
 | B | B-2 | Pendente | `POST /assignments/sync` — busca tarefas no Classroom e faz upsert |
 | B | B-4 | Pendente | Renovação de `access_token` via `refresh_token` quando expirar |
-| C | C-1 | Pendente | `PATCH /assignments/:id/priority` — prioridade manual |
+| C | C-1 | ✅ Feito | `PATCH /assignments/:id/priority` — prioridade manual |
 | C | C-2 | Pendente | Cálculo de `auto_priority` por prazo (executado no sync) |
 | F | F-1 | Pendente | `GET /dashboard` — assignments ordenados por prioridade efetiva |
 | F | F-2 | Pendente | Frontend Vue.js — dashboard principal |
