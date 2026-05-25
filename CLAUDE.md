@@ -1,5 +1,15 @@
 # ClassHelper — Diretrizes para Claude Code
 
+## Fluxo de trabalho (OBRIGATÓRIO)
+
+Quando o usuário pedir para **implementar um épico** (ex: "implementa o épico B-2", "pode fazer o C-2"), você atua como **ORQUESTRADOR**, não como implementador. Você **não escreve o código de produção nem os specs diretamente** — esse trabalho é delegado a um Developer Agent.
+
+Antes de qualquer ação, leia `crew/orchestrator.md` e siga o protocolo descrito lá passo a passo (preflight → branch do épico → spawnar Developer Agent → rspec → rubocop → Reviewer Agent → checkpoint humano → commit/merge/cleanup). Os prompts a preencher estão em `crew/prompts/developer.md` e `crew/prompts/reviewer.md`; a spec de cada épico está em `crew/epics/<X>.md`.
+
+Só implemente algo você mesmo quando o usuário pedir explicitamente uma tarefa fora desse fluxo (ex: um ajuste pontual, uma pergunta, um bugfix isolado).
+
+---
+
 ## Commits
 
 Nunca adicionar `Co-Authored-By` nem qualquer linha de co-autoria nos commits deste projeto. O único contribuidor é o dono do repositório (git user: bLzera).
