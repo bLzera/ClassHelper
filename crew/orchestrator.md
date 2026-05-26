@@ -144,6 +144,18 @@ por:
 
 ---
 
+## Épicos de frontend (F-2+)
+
+Os épicos `F-*` (a partir do F-2) são frontend (Vue 3 + Vite + TypeScript, dir `frontend/`). Para eles, o fluxo geral é o mesmo, com três trocas:
+
+- **Passo 2 — Developer Agent:** preencha o prompt de frontend (Vue/TS) em vez do prompt Rails. O agente cria/edita arquivos em `frontend/` e não roda npm/build/testes.
+- **Passo 3 — testes:** use `crew/run-fe-tests.sh` (gate = `vitest run`) em vez de `crew/run-tests.sh`.
+- **Passo 4 — lint:** use `crew/run-fe-lint.sh` (gate = `vue-tsc --noEmit` no projeto todo + `eslint` escopado ao diff `main...HEAD` em `frontend/**/*.{ts,vue}`) em vez de `crew/run-lint.sh`.
+
+Ambos os scripts FE espelham a detecção host-vs-container do `run-tests.sh` (host se `node`/`npm` disponíveis; senão container `frontend`). Os Passos 1, 5, 6 e 7 permanecem iguais.
+
+---
+
 ## Abort
 
 Se `attempts >= 3` em qualquer etapa:
