@@ -6,40 +6,50 @@ class AuthController < ApplicationController
   end
 
   def callback
-    if params[:error].present?
-      return render json: { error: "oauth_error", message: params[:error] },
-                    status: :bad_request
-    end
+    return redirect_to_frontend("error=oauth_error") if params[:error].present?
 
     oauth = GoogleOauthService.new
     tokens   = oauth.exchange_code(params[:code])
     userinfo = oauth.fetch_userinfo(tokens["access_token"])
 
-    user = User.find_or_initialize_by(google_id: userinfo["sub"])
-    user.assign_attributes(
-      email:                userinfo["email"],
-      name:                 userinfo["name"],
-      google_access_token:  tokens["access_token"],
-      google_refresh_token: tokens["refresh_token"] || user.google_refresh_token
-    )
-    user.save!
-
-    jwt = JwtService.create_access_token(
-      { "user_id" => user.id.to_s },
-      ENV.fetch("SECRET_KEY_BASE")
-    )
-
-    render json: { access_token: jwt, token_type: "bearer" }
-  rescue StandardError => e
-    render json: { error: "auth_failed", message: e.message }, status: :internal_server_error
+    user = upsert_user(userinfo, tokens)
+    redirect_to_frontend("token=#{issue_jwt(user)}")
+  rescue StandardError
+    redirect_to_frontend("error=auth_failed")
   end
 
   def me
     render json: {
-      id:         current_user.id,
-      email:      current_user.email,
-      name:       current_user.name,
+      id: current_user.id,
+      email: current_user.email,
+      name: current_user.name,
       created_at: current_user.created_at.iso8601
     }
+  end
+
+  private
+
+  def upsert_user(userinfo, tokens)
+    user = User.find_or_initialize_by(google_id: userinfo["sub"])
+    user.assign_attributes(
+      email: userinfo["email"],
+      name: userinfo["name"],
+      google_access_token: tokens["access_token"],
+      google_refresh_token: tokens["refresh_token"] || user.google_refresh_token
+    )
+    user.save!
+    user
+  end
+
+  def issue_jwt(user)
+    JwtService.create_access_token(
+      { "user_id" => user.id.to_s },
+      ENV.fetch("SECRET_KEY_BASE")
+    )
+  end
+
+  def redirect_to_frontend(fragment)
+    frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:5173")
+    redirect_to "#{frontend_url}/auth/callback##{fragment}", allow_other_host: true
   end
 end
