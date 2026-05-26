@@ -93,8 +93,9 @@ bundle exec rubocop --parallel
 | `SECRET_KEY_BASE` | Chave para assinar JWTs. Gere com `bundle exec rails secret` |
 | `GOOGLE_CLIENT_ID` | Client ID do Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | Client Secret do Google Cloud Console |
-| `GOOGLE_REDIRECT_URI` | URI de callback OAuth (padrão: `http://localhost:3000/auth/callback`) |
-| `CORS_ORIGINS` | Domínio do frontend (padrão: `http://localhost:5173`) |
+| `GOOGLE_REDIRECT_URI` | URI de callback OAuth registrada no Google (padrão: `http://localhost:3000/auth/callback`) |
+| `CORS_ORIGINS` | Domínio do frontend para CORS (padrão: `http://localhost:5173`) |
+| `FRONTEND_URL` | Base do SPA para onde o callback redireciona com o token (padrão: `http://localhost:5173`) — B-5 |
 
 ---
 
@@ -165,11 +166,19 @@ backend/
 
 ### Esqueleto (sem lógica — próximas implementações)
 
-> **Próximo épico recomendado: F-2** (Frontend Vue.js — dashboard principal) — único item restante do MVP.
+> **Próximos épicos: B-5 e F-2** (independentes, podem rodar em paralelo).
 >
-> Racional: todo o backend do MVP está concluído (auth, sync, prioridade, dashboard e renovação de token via B-4). Resta apenas o frontend.
+> O frontend foi quebrado em 6 épicos (ver Backlog): 1 de backend (**B-5** — callback OAuth passa a
+> redirecionar pro SPA com o token) + 5 verticais de frontend (**F-2** scaffold → **F-3** auth →
+> **F-4** dashboard → **F-5** sync → **F-6** prioridade). Specs em `crew/epics/B-5.md`, `F-2.md`..`F-6.md`.
+>
+> Sequência sugerida: B-5 ∥ F-2 → F-3 → F-4 → (F-5 ∥ F-6).
+>
+> **Atenção:** os épicos `F-*` são frontend (Vue 3 + Vite + TS + Pinia + Tailwind, dir `frontend/`).
+> O gate do crew muda de `rspec`/`rubocop` para `vitest` + `vue-tsc`/`eslint` — a adaptação dos scripts
+> e do orquestrador faz parte do **F-2**.
 
-_Backend do MVP completo — nenhum controller de backend pendente._
+_Backend de API do MVP completo. Resta o B-5 (ajuste no callback pro SPA) e o frontend (F-2..F-6)._
 
 ---
 
@@ -185,13 +194,16 @@ _Backend do MVP completo — nenhum controller de backend pendente._
 - Scopes: `openid email profile classroom.courses.readonly classroom.coursework.me.readonly`
 - Params Google: `access_type=offline`, `prompt=consent`
 
-### `GET /auth/callback`
+### `GET /auth/callback` (contrato muda no Épico B-5 — pendente)
 - Auth: nenhuma
-- Query params: `code` (obrigatório), `error` (indica falha OAuth)
-- Lógica: troca `code` por tokens → busca userinfo → upsert em `users` → emite JWT próprio
-- Response 200: `{ "access_token": String, "token_type": "bearer" }`
-- Response 400: `{ "error": "oauth_error", "message": String }`
-- Response 500: `{ "error": "auth_failed", "message": String }`
+- Query params: `code` (obrigatório no sucesso), `error` (indica falha OAuth do Google)
+- Lógica: troca `code` por tokens → busca userinfo → upsert em `users` → emite JWT próprio → **redireciona pro frontend** com o token no fragment
+- Response 302 (sucesso): `Location: <FRONTEND_URL>/auth/callback#token=<jwt>`
+- Response 302 (erro OAuth): `Location: <FRONTEND_URL>/auth/callback#error=oauth_error`
+- Response 302 (exceção): `Location: <FRONTEND_URL>/auth/callback#error=auth_failed`
+- Token/erro vão sempre no fragment (`#`), nunca na query string
+- Env nova: `FRONTEND_URL` (default `http://localhost:5173`)
+- _Antes do B-5 o callback respondia JSON 200 `{ access_token, token_type }` — incompatível com SPA._
 
 ### `GET /auth/me`
 - Auth: `Bearer <jwt>` obrigatório
@@ -232,10 +244,15 @@ _Backend do MVP completo — nenhum controller de backend pendente._
 | B | B-1 | ✅ Feito | `POST /courses/sync` — busca cursos no Classroom e faz upsert |
 | B | B-2 | ✅ Feito | `POST /assignments/sync` — busca tarefas no Classroom e faz upsert |
 | B | B-4 | ✅ Feito | Renovação de `access_token` via `refresh_token` quando expirar |
+| B | B-5 | Pendente | Callback OAuth redireciona pro frontend com token no fragment (`#token=`) |
 | C | C-1 | ✅ Feito | `PATCH /assignments/:id/priority` — prioridade manual |
 | C | C-2 | ✅ Feito | Cálculo de `auto_priority` por prazo (executado no sync) |
 | F | F-1 | ✅ Feito | `GET /dashboard` — assignments ordenados por prioridade efetiva |
-| F | F-2 | Pendente | Frontend Vue.js — dashboard principal |
+| F | F-2 | Pendente | Frontend — scaffold & infra (Vite+Vue3+TS+Pinia+Router+Tailwind+Vitest); adapta o crew |
+| F | F-3 | Pendente | Frontend — fluxo de autenticação (login, callback, store, guard, logout) |
+| F | F-4 | Pendente | Frontend — dashboard (listagem ordenada, estados loading/vazio/erro) |
+| F | F-5 | Pendente | Frontend — ações de sync (cursos/tarefas) com refresh do dashboard |
+| F | F-6 | Pendente | Frontend — editar prioridade manual (`PATCH` + reordenação) |
 
 ---
 
