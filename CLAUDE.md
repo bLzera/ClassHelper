@@ -166,19 +166,18 @@ backend/
 
 ### Esqueleto (sem lógica — próximas implementações)
 
-> **Próximos épicos: B-5 e F-2** (independentes, podem rodar em paralelo).
+> **Próximo épico: F-2** (B-5 ✅ feito — callback já redireciona pro SPA).
 >
-> O frontend foi quebrado em 6 épicos (ver Backlog): 1 de backend (**B-5** — callback OAuth passa a
-> redirecionar pro SPA com o token) + 5 verticais de frontend (**F-2** scaffold → **F-3** auth →
-> **F-4** dashboard → **F-5** sync → **F-6** prioridade). Specs em `crew/epics/B-5.md`, `F-2.md`..`F-6.md`.
+> O frontend foi quebrado em 5 verticais (ver Backlog): **F-2** scaffold → **F-3** auth →
+> **F-4** dashboard → **F-5** sync → **F-6** prioridade. Specs em `crew/epics/F-2.md`..`F-6.md`.
 >
-> Sequência sugerida: B-5 ∥ F-2 → F-3 → F-4 → (F-5 ∥ F-6).
+> Sequência sugerida: F-2 → F-3 → F-4 → (F-5 ∥ F-6).
 >
 > **Atenção:** os épicos `F-*` são frontend (Vue 3 + Vite + TS + Pinia + Tailwind, dir `frontend/`).
 > O gate do crew muda de `rspec`/`rubocop` para `vitest` + `vue-tsc`/`eslint` — a adaptação dos scripts
 > e do orquestrador faz parte do **F-2**.
 
-_Backend de API do MVP completo. Resta o B-5 (ajuste no callback pro SPA) e o frontend (F-2..F-6)._
+_Backend de API do MVP completo (B-5 ✅). Resta o frontend (F-2..F-6)._
 
 ---
 
@@ -194,7 +193,7 @@ _Backend de API do MVP completo. Resta o B-5 (ajuste no callback pro SPA) e o fr
 - Scopes: `openid email profile classroom.courses.readonly classroom.coursework.me.readonly`
 - Params Google: `access_type=offline`, `prompt=consent`
 
-### `GET /auth/callback` (contrato muda no Épico B-5 — pendente)
+### `GET /auth/callback` (Épico B-5 — ✅ feito)
 - Auth: nenhuma
 - Query params: `code` (obrigatório no sucesso), `error` (indica falha OAuth do Google)
 - Lógica: troca `code` por tokens → busca userinfo → upsert em `users` → emite JWT próprio → **redireciona pro frontend** com o token no fragment
@@ -244,7 +243,7 @@ _Backend de API do MVP completo. Resta o B-5 (ajuste no callback pro SPA) e o fr
 | B | B-1 | ✅ Feito | `POST /courses/sync` — busca cursos no Classroom e faz upsert |
 | B | B-2 | ✅ Feito | `POST /assignments/sync` — busca tarefas no Classroom e faz upsert |
 | B | B-4 | ✅ Feito | Renovação de `access_token` via `refresh_token` quando expirar |
-| B | B-5 | Pendente | Callback OAuth redireciona pro frontend com token no fragment (`#token=`) |
+| B | B-5 | ✅ Feito | Callback OAuth redireciona pro frontend com token no fragment (`#token=`) |
 | C | C-1 | ✅ Feito | `PATCH /assignments/:id/priority` — prioridade manual |
 | C | C-2 | ✅ Feito | Cálculo de `auto_priority` por prazo (executado no sync) |
 | F | F-1 | ✅ Feito | `GET /dashboard` — assignments ordenados por prioridade efetiva |
