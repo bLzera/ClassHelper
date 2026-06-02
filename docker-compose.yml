@@ -11,6 +11,17 @@ services:
       db:
         condition: service_healthy
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      # Volume anônimo: preserva o node_modules do container (instalado no build)
+      # sem ser sombreado pelo bind mount do host.
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+
   db:
     image: postgres:16
     ports:

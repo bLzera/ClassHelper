@@ -4,7 +4,12 @@
 
 Quando o usuário pedir para **implementar um épico** (ex: "implementa o épico B-2", "pode fazer o C-2"), você atua como **ORQUESTRADOR**, não como implementador. Você **não escreve o código de produção nem os specs diretamente** — esse trabalho é delegado a um Developer Agent.
 
-Antes de qualquer ação, leia `crew/orchestrator.md` e siga o protocolo descrito lá passo a passo (preflight → branch do épico → spawnar Developer Agent → rspec → rubocop → Reviewer Agent → checkpoint humano → commit/merge/cleanup). Os prompts a preencher estão em `crew/prompts/developer.md` e `crew/prompts/reviewer.md`; a spec de cada épico está em `crew/epics/<X>.md`.
+Antes de qualquer ação, leia `crew/orchestrator.md` e siga o protocolo descrito lá passo a passo (preflight → branch do épico → spawnar Developer Agent → testes → lint → Reviewer Agent → checkpoint humano → commit/merge/cleanup). Os prompts a preencher dependem do tipo de épico:
+
+- **Épicos de backend (Rails):** `crew/prompts/developer.md` e `crew/prompts/reviewer.md`; gates `crew/run-tests.sh` (rspec) + `crew/run-lint.sh` (rubocop).
+- **Épicos de frontend (`F-*`, Vue/TS):** `crew/prompts/developer-fe.md` e `crew/prompts/reviewer-fe.md`; gates `crew/run-fe-tests.sh` (vitest) + `crew/run-fe-lint.sh` (vue-tsc + eslint). Ver a seção "Épicos de frontend (F-2+)" em `crew/orchestrator.md`.
+
+A spec de cada épico está em `crew/epics/<X>.md`.
 
 Só implemente algo você mesmo quando o usuário pedir explicitamente uma tarefa fora desse fluxo (ex: um ajuste pontual, uma pergunta, um bugfix isolado).
 
@@ -78,6 +83,47 @@ bundle exec rspec spec/services/jwt_service_spec.rb --format documentation
 cd backend
 bundle exec rubocop --parallel
 ```
+
+---
+
+## Frontend (Vue 3 + Vite + TS)
+
+SPA em `frontend/`. Stack: Vue 3 (`<script setup lang="ts">`), Vite, TypeScript, Pinia (estado), Vue Router 4, Tailwind. Testes com Vitest + Vue Test Utils (jsdom).
+
+### Estrutura
+
+```
+frontend/
+├── Dockerfile                      # node:20-alpine, npm ci, vite dev --host 0.0.0.0
+├── index.html
+├── package.json / package-lock.json
+├── vite.config.ts                  # alias @ → src; config do vitest (jsdom, globals)
+├── tsconfig*.json / eslint.config.js / tailwind.config.js / postcss.config.js
+├── .env.example                    # VITE_API_BASE_URL
+└── src/
+    ├── main.ts                     # registra Pinia + Router
+    ├── App.vue                     # <RouterView />
+    ├── lib/api.ts                  # instância axios: baseURL + interceptors (Bearer / 401→logout)
+    ├── router/index.ts             # rotas + guard de auth (meta.public libera)
+    ├── stores/auth.ts              # store Pinia: token, user, setToken, fetchMe, logout, isAuthenticated (F-3)
+    └── views/                      # LoginView, CallbackView, DashboardView, HomeView
+```
+
+### Como subir / testar / lintar
+
+```bash
+cd frontend
+npm ci                 # primeira vez (node_modules é gitignorado)
+
+npm run dev            # dev server em http://localhost:5173
+npm run test           # vitest run
+npm run type-check     # vue-tsc --noEmit
+npm run lint           # eslint
+```
+
+Via Docker (junto do backend): `docker compose up frontend` (porta 5173). Aponta para a API em `VITE_API_BASE_URL` (default `http://localhost:3000`).
+
+Os gates do crew (`crew/run-fe-tests.sh` / `crew/run-fe-lint.sh`) rodam `npm ci` automaticamente quando falta `node_modules` e detectam host vs container `frontend`.
 
 ---
 

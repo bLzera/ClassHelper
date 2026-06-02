@@ -146,13 +146,20 @@ por:
 
 ## Épicos de frontend (F-2+)
 
-Os épicos `F-*` (a partir do F-2) são frontend (Vue 3 + Vite + TypeScript, dir `frontend/`). Para eles, o fluxo geral é o mesmo, com três trocas:
+Os épicos `F-*` (a partir do F-2) são frontend (Vue 3 + Vite + TypeScript + Pinia + Vue Router + Tailwind, dir `frontend/`). Para eles, o fluxo geral é o mesmo, com estas trocas:
 
-- **Passo 2 — Developer Agent:** preencha o prompt de frontend (Vue/TS) em vez do prompt Rails. O agente cria/edita arquivos em `frontend/` e não roda npm/build/testes.
+- **Passo 2 — Developer Agent:** preencha **`crew/prompts/developer-fe.md`** (Vue/TS) em vez do `developer.md` (Rails). Mesmos placeholders (`{{EPIC_ID}}`, `{{EPIC_SPEC}}`, `{{FILES_TO_READ}}`, `{{FILES_TO_CREATE_OR_MODIFY}}`, `{{ACCEPTANCE_CRITERIA}}`, `{{RETRY_CONTEXT}}`). O agente cria/edita arquivos em `frontend/` e não roda npm/build/testes.
 - **Passo 3 — testes:** use `crew/run-fe-tests.sh` (gate = `vitest run`) em vez de `crew/run-tests.sh`.
-- **Passo 4 — lint:** use `crew/run-fe-lint.sh` (gate = `vue-tsc --noEmit` no projeto todo + `eslint` escopado ao diff `main...HEAD` em `frontend/**/*.{ts,vue}`) em vez de `crew/run-lint.sh`.
+- **Passo 4 — lint:** use `crew/run-fe-lint.sh` (gate = `vue-tsc --noEmit` no projeto todo + `eslint` escopado aos arquivos do épico) em vez de `crew/run-lint.sh`.
+- **Passo 5 — Reviewer Agent:** se for spawnar, preencha **`crew/prompts/reviewer-fe.md`** (checklist Vue/auth-SPA) em vez do `reviewer.md` (Rails). Para épicos FE simples, o orquestrador pode revisar direto.
 
-Ambos os scripts FE espelham a detecção host-vs-container do `run-tests.sh` (host se `node`/`npm` disponíveis; senão container `frontend`). Os Passos 1, 5, 6 e 7 permanecem iguais.
+Notas operacionais (já tratadas pelos scripts, mas bom saber):
+
+- **Bootstrap de dependências:** `frontend/node_modules` é gitignorado, então numa máquina limpa não existe. `run-fe-tests.sh`/`run-fe-lint.sh` rodam `npm ci` automaticamente quando falta. Não rode `npm install` manualmente.
+- **Detecção de arquivos do épico:** o `run-fe-lint.sh` compara a árvore de trabalho com `main` (`git diff main`) **e** inclui untracked (`git ls-files --others`) — então ele enxerga arquivos novos mesmo antes do commit (Passo 4 roda antes do Passo 7). Não dependa de `main...HEAD` aqui.
+- **Detecção host-vs-container:** host se `node`/`npm` disponíveis; senão o container `frontend` do `docker-compose.yml` (suba-o no preflight junto com `db`/`backend` se for usar o fallback).
+
+Os Passos 1, 6 e 7 permanecem iguais.
 
 ---
 
