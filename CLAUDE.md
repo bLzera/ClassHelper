@@ -166,12 +166,12 @@ backend/
 
 ### Esqueleto (sem lógica — próximas implementações)
 
-> **Próximo épico: F-3** (F-2 ✅ feito — scaffold do frontend criado em `frontend/` e crew adaptado).
+> **Próximo épico: F-4** (F-2 ✅ scaffold, F-3 ✅ auth — login/callback/store/guard/logout).
 >
-> O frontend foi quebrado em 5 verticais (ver Backlog): **F-2** scaffold ✅ → **F-3** auth →
+> O frontend foi quebrado em 5 verticais (ver Backlog): **F-2** scaffold ✅ → **F-3** auth ✅ →
 > **F-4** dashboard → **F-5** sync → **F-6** prioridade. Specs em `crew/epics/F-2.md`..`F-6.md`.
 >
-> Sequência sugerida: F-3 → F-4 → (F-5 ∥ F-6).
+> Sequência sugerida: F-4 → (F-5 ∥ F-6).
 >
 > **Atenção:** os épicos `F-*` são frontend (Vue 3 + Vite + TS + Pinia + Tailwind, dir `frontend/`).
 > O gate do crew usa `crew/run-fe-tests.sh` (`vitest run`) + `crew/run-fe-lint.sh` (`vue-tsc --noEmit` +
@@ -248,7 +248,7 @@ _Backend de API do MVP completo (B-5 ✅). Resta o frontend (F-2..F-6)._
 | C | C-2 | ✅ Feito | Cálculo de `auto_priority` por prazo (executado no sync) |
 | F | F-1 | ✅ Feito | `GET /dashboard` — assignments ordenados por prioridade efetiva |
 | F | F-2 | ✅ Feito | Frontend — scaffold & infra (Vite+Vue3+TS+Pinia+Router+Tailwind+Vitest); adapta o crew |
-| F | F-3 | Pendente | Frontend — fluxo de autenticação (login, callback, store, guard, logout) |
+| F | F-3 | ✅ Feito | Frontend — fluxo de autenticação (login, callback, store, guard, logout) |
 | F | F-4 | Pendente | Frontend — dashboard (listagem ordenada, estados loading/vazio/erro) |
 | F | F-5 | Pendente | Frontend — ações de sync (cursos/tarefas) com refresh do dashboard |
 | F | F-6 | Pendente | Frontend — editar prioridade manual (`PATCH` + reordenação) |
