@@ -4,11 +4,14 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAssignmentsStore } from '@/stores/assignments'
+import { useSyncStore } from '@/stores/sync'
 import AssignmentCard from '@/components/AssignmentCard.vue'
+import SyncButton from '@/components/SyncButton.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const assignmentsStore = useAssignmentsStore()
+const syncStore = useSyncStore()
 const { assignments, loading, error } = storeToRefs(assignmentsStore)
 
 onMounted(() => {
@@ -18,6 +21,23 @@ onMounted(() => {
 function logout(): void {
   authStore.logout()
   router.replace('/login')
+}
+
+function syncCourses(): Promise<number> {
+  return syncStore.syncCourses()
+}
+
+function syncAssignments(): Promise<number> {
+  return syncStore.syncAssignments()
+}
+
+async function syncAll(): Promise<number> {
+  await syncStore.syncCourses()
+  return syncStore.syncAssignments()
+}
+
+async function refreshDashboard(): Promise<void> {
+  await assignmentsStore.fetchDashboard()
 }
 </script>
 
@@ -33,6 +53,30 @@ function logout(): void {
         Sair
       </button>
     </header>
+
+    <section
+      class="mb-6 flex flex-wrap gap-3"
+      data-test="sync-controls"
+    >
+      <SyncButton
+        data-test="sync-courses"
+        label="Sincronizar cursos"
+        :action="syncCourses"
+        @success="refreshDashboard"
+      />
+      <SyncButton
+        data-test="sync-assignments"
+        label="Sincronizar tarefas"
+        :action="syncAssignments"
+        @success="refreshDashboard"
+      />
+      <SyncButton
+        data-test="sync-all"
+        label="Sincronizar tudo"
+        :action="syncAll"
+        @success="refreshDashboard"
+      />
+    </section>
 
     <p
       v-if="loading"
