@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Assignment } from '@/stores/assignments'
+import { useAssignmentsStore } from '@/stores/assignments'
+import PriorityEditor from '@/components/PriorityEditor.vue'
 
 const props = defineProps<{
   assignment: Assignment
 }>()
+
+const assignmentsStore = useAssignmentsStore()
+
+function savePriority(value: number): Promise<void> {
+  return assignmentsStore.updatePriority(props.assignment.id, value)
+}
 
 const effectivePriority = computed<number | null>(
   () => props.assignment.manual_priority ?? props.assignment.auto_priority,
@@ -50,6 +58,12 @@ const formattedDueDate = computed<string>(() => {
           class="text-gray-400"
         >Sem prioridade</span>
       </span>
+    </div>
+    <div class="mt-3">
+      <PriorityEditor
+        :current="assignment.manual_priority"
+        :on-save="savePriority"
+      />
     </div>
   </article>
 </template>
