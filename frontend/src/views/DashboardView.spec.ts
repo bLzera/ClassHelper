@@ -6,11 +6,13 @@ import { createRouter, createWebHistory } from 'vue-router'
 import api from '@/lib/api'
 import DashboardView from '@/views/DashboardView.vue'
 import AssignmentCard from '@/components/AssignmentCard.vue'
+import SyncButton from '@/components/SyncButton.vue'
 import type { Assignment } from '@/stores/assignments'
 
 vi.mock('@/lib/api', () => ({
   default: {
     get: vi.fn(),
+    post: vi.fn(),
   },
 }))
 
@@ -142,5 +144,82 @@ describe('DashboardView', () => {
     const errorEl = wrapper.find('[data-test="error"]')
     expect(errorEl.exists()).toBe(true)
     expect(wrapper.findComponent(AssignmentCard).exists()).toBe(false)
+  })
+
+  it('renderiza os controles de sync de cursos, tarefas e tudo', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { assignments: [] } })
+
+    const wrapper = await mountView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="sync-courses"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="sync-assignments"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="sync-all"]').exists()).toBe(true)
+    expect(wrapper.findAllComponents(SyncButton)).toHaveLength(3)
+  })
+
+  it('"Sincronizar cursos" chama POST /courses/sync e atualiza a lista (novo GET /dashboard)', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { assignments: [] } })
+    vi.mocked(api.post).mockResolvedValue({ data: { synced: 2, courses: [] } })
+
+    const wrapper = await mountView()
+    await flushPromises()
+    // 1 GET inicial do onMounted
+    expect(api.get).toHaveBeenCalledTimes(1)
+
+    await wrapper.find('[data-test="sync-courses"] [data-test="sync-button"]').trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/courses/sync')
+    // refresh: GET /dashboard chamado de novo após o sync
+    expect(api.get).toHaveBeenCalledTimes(2)
+    expect(api.get).toHaveBeenLastCalledWith('/dashboard')
+  })
+
+  it('"Sincronizar tarefas" chama POST /assignments/sync e atualiza a lista', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { assignments: [] } })
+    vi.mocked(api.post).mockResolvedValue({ data: { synced: 4 } })
+
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.find('[data-test="sync-assignments"] [data-test="sync-button"]').trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/assignments/sync')
+    expect(api.get).toHaveBeenCalledTimes(2)
+    expect(api.get).toHaveBeenLastCalledWith('/dashboard')
+  })
+
+  it('"Sincronizar tudo" encadeia cursos → tarefas e então atualiza a lista', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { assignments: [] } })
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({ data: { synced: 2, courses: [] } })
+      .mockResolvedValueOnce({ data: { synced: 5 } })
+
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.find('[data-test="sync-all"] [data-test="sync-button"]').trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenNthCalledWith(1, '/courses/sync')
+    expect(api.post).toHaveBeenNthCalledWith(2, '/assignments/sync')
+    expect(api.get).toHaveBeenCalledTimes(2)
+  })
+
+  it('erro no sync exibe feedback de erro e não dispara refresh do dashboard', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { assignments: [] } })
+    vi.mocked(api.post).mockRejectedValue(new Error('boom'))
+
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.find('[data-test="sync-courses"] [data-test="sync-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="sync-courses"] [data-test="sync-error"]').exists()).toBe(true)
+    // sem refresh: o GET continua sendo só o do onMounted
+    expect(api.get).toHaveBeenCalledTimes(1)
   })
 })
