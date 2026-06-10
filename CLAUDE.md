@@ -210,20 +210,17 @@ backend/
 | `spec/factories/assignments.rb` | Factory FactoryBot para Assignment |
 | `spec/requests/assignments_spec.rb` | 8 testes do `PATCH /assignments/:id/priority` |
 
-### Esqueleto (sem lógica — próximas implementações)
+### MVP completo ✅
 
-> **Próximo épico: F-6** (F-2 ✅ scaffold, F-3 ✅ auth, F-4 ✅ dashboard, F-5 ✅ sync).
->
-> O frontend foi quebrado em 5 verticais (ver Backlog): **F-2** scaffold ✅ → **F-3** auth ✅ →
-> **F-4** dashboard ✅ → **F-5** sync ✅ → **F-6** prioridade. Specs em `crew/epics/F-2.md`..`F-6.md`.
->
-> Sequência sugerida: F-6 (último do MVP frontend).
+> **Todos os épicos do MVP foram concluídos.** Frontend em 5 verticais: **F-2** scaffold ✅ →
+> **F-3** auth ✅ → **F-4** dashboard ✅ → **F-5** sync ✅ → **F-6** prioridade ✅.
+> Specs em `crew/epics/F-2.md`..`F-6.md`.
 >
 > **Atenção:** os épicos `F-*` são frontend (Vue 3 + Vite + TS + Pinia + Tailwind, dir `frontend/`).
 > O gate do crew usa `crew/run-fe-tests.sh` (`vitest run`) + `crew/run-fe-lint.sh` (`vue-tsc --noEmit` +
 > `eslint`) — ver a seção "Épicos de frontend (F-2+)" em `crew/orchestrator.md`.
 
-_Backend de API do MVP completo (B-5 ✅). Resta o frontend (F-2..F-6)._
+_Backend de API do MVP completo (B-5 ✅) e frontend completo (F-6 ✅). MVP entregue._
 
 ---
 
@@ -297,7 +294,7 @@ _Backend de API do MVP completo (B-5 ✅). Resta o frontend (F-2..F-6)._
 | F | F-3 | ✅ Feito | Frontend — fluxo de autenticação (login, callback, store, guard, logout) |
 | F | F-4 | ✅ Feito | Frontend — dashboard (listagem ordenada, estados loading/vazio/erro) |
 | F | F-5 | ✅ Feito | Frontend — ações de sync (cursos/tarefas) com refresh do dashboard |
-| F | F-6 | Pendente | Frontend — editar prioridade manual (`PATCH` + reordenação) |
+| F | F-6 | ✅ Feito | Frontend — editar prioridade manual (`PATCH` + reordenação) |
 
 ---
 
