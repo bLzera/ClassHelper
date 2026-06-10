@@ -8,13 +8,10 @@ class AuthController < ApplicationController
   def callback
     return redirect_to_frontend("error=oauth_error") if params[:error].present?
 
-    oauth = GoogleOauthService.new
-    tokens   = oauth.exchange_code(params[:code])
-    userinfo = oauth.fetch_userinfo(tokens["access_token"])
-
-    user = upsert_user(userinfo, tokens)
+    user = authenticate_with_google(params[:code])
     redirect_to_frontend("token=#{issue_jwt(user)}")
-  rescue StandardError
+  rescue StandardError => e
+    Rails.logger.error("OAuth callback failed: #{e.class}: #{e.message}")
     redirect_to_frontend("error=auth_failed")
   end
 
@@ -28,6 +25,13 @@ class AuthController < ApplicationController
   end
 
   private
+
+  def authenticate_with_google(code)
+    oauth    = GoogleOauthService.new
+    tokens   = oauth.exchange_code(code)
+    userinfo = oauth.fetch_userinfo(tokens["access_token"])
+    upsert_user(userinfo, tokens)
+  end
 
   def upsert_user(userinfo, tokens)
     user = User.find_or_initialize_by(google_id: userinfo["sub"])
