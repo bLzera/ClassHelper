@@ -1,9 +1,19 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAssignmentsStore } from '@/stores/assignments'
+import AssignmentCard from '@/components/AssignmentCard.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const assignmentsStore = useAssignmentsStore()
+const { assignments, loading, error } = storeToRefs(assignmentsStore)
+
+onMounted(() => {
+  assignmentsStore.fetchDashboard()
+})
 
 function logout(): void {
   authStore.logout()
@@ -12,14 +22,52 @@ function logout(): void {
 </script>
 
 <template>
-  <main class="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-    <h1 class="text-2xl font-bold">Dashboard</h1>
-    <button
-      type="button"
-      class="rounded bg-gray-200 px-4 py-2 font-medium text-gray-800 hover:bg-gray-300"
-      @click="logout"
+  <main class="mx-auto min-h-screen w-full max-w-3xl p-8">
+    <header class="mb-6 flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Dashboard</h1>
+      <button
+        type="button"
+        class="rounded bg-gray-200 px-4 py-2 font-medium text-gray-800 hover:bg-gray-300"
+        @click="logout"
+      >
+        Sair
+      </button>
+    </header>
+
+    <p
+      v-if="loading"
+      data-test="loading"
+      class="text-gray-600"
     >
-      Sair
-    </button>
+      Carregando tarefas...
+    </p>
+
+    <p
+      v-else-if="error"
+      data-test="error"
+      class="rounded border border-red-200 bg-red-50 p-4 text-red-700"
+    >
+      Não foi possível carregar as tarefas. Tente novamente.
+    </p>
+
+    <p
+      v-else-if="assignments.length === 0"
+      data-test="empty"
+      class="text-gray-600"
+    >
+      Nenhuma tarefa por aqui.
+    </p>
+
+    <ul
+      v-else
+      class="flex flex-col gap-3"
+    >
+      <li
+        v-for="assignment in assignments"
+        :key="assignment.id"
+      >
+        <AssignmentCard :assignment="assignment" />
+      </li>
+    </ul>
   </main>
 </template>
