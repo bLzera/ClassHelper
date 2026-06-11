@@ -306,7 +306,7 @@ _Backend de API do MVP completo (B-5 ✅) e frontend completo (F-6 ✅). MVP ent
 
 | Épico | Item | Status | Depende | Descrição |
 |---|---|---|---|---|
-| B | B-6 | Pendente | — | `GET /courses` — lista cursos com `pending_count` + `next_due_date` |
+| B | B-6 | ✅ Feito | — | `GET /courses` — lista cursos com `pending_count` + `next_due_date` |
 | B | B-7 | Pendente | — | Capturar `alternate_link` do assignment no sync + expor nos serializers |
 | B | B-8 | Pendente | — | Sync de submissões (`studentSubmissions`) → estado real (`TURNED_IN`) |
 | B | B-9 | Pendente | B-8 | Filtro de estado (`/dashboard`, `/courses/:id/assignments`) + `GET /assignments/:id` |
