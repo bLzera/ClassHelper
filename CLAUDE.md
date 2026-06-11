@@ -296,6 +296,26 @@ _Backend de API do MVP completo (B-5 ✅) e frontend completo (F-6 ✅). MVP ent
 | F | F-5 | ✅ Feito | Frontend — ações de sync (cursos/tarefas) com refresh do dashboard |
 | F | F-6 | ✅ Feito | Frontend — editar prioridade manual (`PATCH` + reordenação) |
 
+### Sprint 2 — "completinho" (pendente)
+
+> Backlog definido em conjunto com o dono (analista de requisitos). Specs em `crew/epics/B-6.md`..`B-10.md` e `F-7.md`..`F-11.md`.
+> Sequência: **B-6 → B-7 → B-8 → B-9 → B-10 → F-7 → F-8 → F-9 → F-10 → F-11**.
+
+| Épico | Item | Status | Depende | Descrição |
+|---|---|---|---|---|
+| B | B-6 | Pendente | — | `GET /courses` — lista cursos com `pending_count` + `next_due_date` |
+| B | B-7 | Pendente | — | Capturar `alternate_link` do assignment no sync + expor nos serializers |
+| B | B-8 | Pendente | — | Sync de submissões (`studentSubmissions`) → estado real (`TURNED_IN`) |
+| B | B-9 | Pendente | B-8 | Filtro de estado (`/dashboard`, `/courses/:id/assignments`) + `GET /assignments/:id` |
+| B | B-10 | Pendente | B-6, B-8 | `POST /sync` orquestrado (cursos+tarefas+submissões) com throttle de 1h + force manual |
+| F | F-7 | Pendente | — | Frontend — app shell modular (layout + sidebar + sessão); revisão geral do FE |
+| F | F-8 | Pendente | F-7, B-10 | Frontend — auto-sync no login (`<Suspense>`/background) + "Sincronizar agora" |
+| F | F-9 | Pendente | F-7, B-6, B-9 | Frontend — lista de cursos + tela de curso (tarefas por prioridade) |
+| F | F-10 | Pendente | F-9, B-9 | Frontend — toggle pendentes/concluídas (dashboard global + curso) |
+| F | F-11 | Pendente | F-7, B-7, B-9 | Frontend — tela de detalhe `/assignments/:id` + link "Abrir no Classroom" |
+
+**Decisões de produto da Sprint 2:** cursos e dashboard global convivem · sidebar = Todas as tarefas + Cursos + Sessão + "Sincronizar agora" · auto-sync server-side disparado a cada abertura autenticada com throttle de 1h (manual força) · "concluídas" = só `TURNED_IN` (exige sync de submissões) · toggle simples de 2 estados · detalhe em rota própria · home abre em "Todas as tarefas" · desktop-first (responsividade fica p/ sprint futura).
+
 ---
 
 ## Decisões de arquitetura
