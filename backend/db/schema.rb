@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_11_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_12_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -27,6 +27,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_11_000001) do
     t.integer "auto_priority"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "alternate_link", limit: 1024
     t.index ["course_id"], name: "index_assignments_on_course_id"
     t.index ["user_id", "course_id", "google_assignment_id"], name: "index_assignments_on_user_course_and_google_assignment_id", unique: true
   end

@@ -41,9 +41,9 @@ printf '  - %s\n' "${CHANGED[@]}"
 if command -v bundle >/dev/null 2>&1 && (cd "$ROOT/backend" && bundle check >/dev/null 2>&1); then
   echo "[run-lint] ambiente: host"
   cd "$ROOT/backend"
-  exec bundle exec rubocop "${CHANGED[@]}"
+  exec bundle exec rubocop --force-exclusion "${CHANGED[@]}"
 else
   echo "[run-lint] ambiente: container Docker backend"
   docker compose -f "$ROOT/docker-compose.yml" exec -T backend bash -lc \
-    "bundle exec rubocop ${CHANGED[*]}"
+    "bundle exec rubocop --force-exclusion ${CHANGED[*]}"
 fi

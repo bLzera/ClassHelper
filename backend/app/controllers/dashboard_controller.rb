@@ -8,7 +8,7 @@ class DashboardController < ApplicationController
 
     render json: {
       assignments: assignments.as_json(
-        only: %i[id title description due_date state manual_priority auto_priority course_id]
+        only: %i[id title description due_date state manual_priority auto_priority course_id alternate_link]
       )
     }, status: :ok
   end

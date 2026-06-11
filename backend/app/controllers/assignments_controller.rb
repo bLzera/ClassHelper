@@ -55,7 +55,8 @@ class AssignmentsController < ApplicationController
       description: course_work["description"],
       due_date: due_date,
       state: map_state(course_work["state"]),
-      auto_priority: Assignment.calculate_auto_priority(due_date)
+      auto_priority: Assignment.calculate_auto_priority(due_date),
+      alternate_link: course_work["alternateLink"]
     }
   end
 

@@ -30,8 +30,19 @@ RSpec.describe "Dashboard", type: :request do
         get "/dashboard", headers: headers
 
         expect(response.parsed_body["assignments"].first.keys).to match_array(
-          %w[id title description due_date state manual_priority auto_priority course_id]
+          %w[id title description due_date state manual_priority auto_priority course_id alternate_link]
         )
+      end
+
+      it "inclui alternate_link no JSON de cada assignment" do
+        create(:assignment, user: user, course: course, auto_priority: 1,
+                            alternate_link: "https://classroom.google.com/c/abc/a/xyz/details")
+
+        get "/dashboard", headers: headers
+
+        first = response.parsed_body["assignments"].first
+        expect(first).to have_key("alternate_link")
+        expect(first["alternate_link"]).to eq("https://classroom.google.com/c/abc/a/xyz/details")
       end
     end
 
