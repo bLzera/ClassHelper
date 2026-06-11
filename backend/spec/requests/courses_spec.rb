@@ -9,6 +9,129 @@ RSpec.describe "Courses", type: :request do
   before { ENV["SECRET_KEY_BASE"] = secret }
   after  { ENV.delete("SECRET_KEY_BASE") }
 
+  describe "GET /courses" do
+    context "com token válido" do
+      it "retorna 200 com a lista de cursos do usuário" do
+        create(:course, user: user, name: "Cálculo I")
+        create(:course, user: user, name: "Álgebra Linear")
+
+        get "/courses", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["courses"].size).to eq(2)
+      end
+
+      it "ordena os cursos por name ascendente" do
+        create(:course, user: user, name: "Zoologia")
+        create(:course, user: user, name: "Anatomia")
+        create(:course, user: user, name: "Microbiologia")
+
+        get "/courses", headers: headers
+
+        names = response.parsed_body["courses"].pluck("name")
+        expect(names).to eq(%w[Anatomia Microbiologia Zoologia])
+      end
+
+      it "expõe id e google_course_id de cada curso" do
+        create(:course, user: user, google_course_id: "gc-1", name: "Cálculo I", section: "T1")
+
+        get "/courses", headers: headers
+
+        course = response.parsed_body["courses"].first
+        expect(course["id"]).to be_present
+        expect(course["google_course_id"]).to eq("gc-1")
+      end
+
+      it "expõe name e section de cada curso" do
+        create(:course, user: user, google_course_id: "gc-1", name: "Cálculo I", section: "T1")
+
+        get "/courses", headers: headers
+
+        course = response.parsed_body["courses"].first
+        expect(course["name"]).to eq("Cálculo I")
+        expect(course["section"]).to eq("T1")
+      end
+
+      it "calcula pending_count como o nº de assignments CREATED" do
+        course = create(:course, user: user)
+        create(:assignment, user: user, course: course, state: "CREATED")
+        create(:assignment, user: user, course: course, state: "CREATED")
+        create(:assignment, user: user, course: course, state: "TURNED_IN")
+
+        get "/courses", headers: headers
+
+        expect(response.parsed_body["courses"].first["pending_count"]).to eq(2)
+      end
+
+      it "retorna next_due_date como o menor due_date entre os pendentes" do
+        course = create(:course, user: user)
+        create(:assignment, user: user, course: course, state: "CREATED",
+                            due_date: 5.days.from_now)
+        soonest = create(:assignment, user: user, course: course, state: "CREATED",
+                                      due_date: 2.days.from_now)
+        create(:assignment, user: user, course: course, state: "CREATED",
+                            due_date: 10.days.from_now)
+
+        get "/courses", headers: headers
+
+        next_due = response.parsed_body["courses"].first["next_due_date"]
+        expect(Time.zone.parse(next_due).to_i).to be_within(1).of(soonest.due_date.to_i)
+      end
+
+      it "ignora due_date de assignments não-pendentes ao calcular next_due_date" do
+        course = create(:course, user: user)
+        create(:assignment, user: user, course: course, state: "TURNED_IN",
+                            due_date: 1.day.from_now)
+        pending = create(:assignment, user: user, course: course, state: "CREATED",
+                                      due_date: 7.days.from_now)
+
+        get "/courses", headers: headers
+
+        next_due = response.parsed_body["courses"].first["next_due_date"]
+        expect(Time.zone.parse(next_due).to_i).to be_within(1).of(pending.due_date.to_i)
+      end
+
+      it "retorna next_due_date null quando não há pendente com prazo" do
+        course = create(:course, user: user)
+        create(:assignment, user: user, course: course, state: "CREATED", due_date: nil)
+
+        get "/courses", headers: headers
+
+        expect(response.parsed_body["courses"].first["next_due_date"]).to be_nil
+      end
+
+      it "retorna pending_count 0 e next_due_date null para cursos sem assignments" do
+        create(:course, user: user)
+
+        get "/courses", headers: headers
+
+        course = response.parsed_body["courses"].first
+        expect(course["pending_count"]).to eq(0)
+        expect(course["next_due_date"]).to be_nil
+      end
+
+      it "retorna apenas os cursos do current_user" do
+        create(:course, user: user, name: "Meu Curso")
+        other_user = create(:user)
+        create(:course, user: other_user, name: "Curso Alheio")
+
+        get "/courses", headers: headers
+
+        names = response.parsed_body["courses"].pluck("name")
+        expect(names).to eq(["Meu Curso"])
+      end
+    end
+
+    context "sem token de autenticação" do
+      it "retorna 401" do
+        get "/courses"
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(response.parsed_body["error"]).to eq("unauthorized")
+      end
+    end
+  end
+
   describe "POST /courses/sync" do
     context "com token válido e Classroom respondendo com sucesso" do
       let(:classroom_payload) do
