@@ -1,7 +1,9 @@
 require "httparty"
 
 class GoogleClassroomService
-  COURSES_URL = "https://classroom.googleapis.com/v1/courses".freeze
+  COURSES_URL     = "https://classroom.googleapis.com/v1/courses".freeze
+  PAGE_SIZE       = 100
+  REQUEST_TIMEOUT = 10
 
   class ApiError < StandardError; end
   class TokenExpiredError < StandardError; end
@@ -12,29 +14,43 @@ class GoogleClassroomService
   end
 
   def fetch_courses
-    response = with_token_refresh do |access_token|
-      HTTParty.get(
-        COURSES_URL,
-        headers: { "Authorization" => "Bearer #{access_token}" },
-        query: { courseStates: "ACTIVE" }
-      )
-    end
-
-    response.parsed_response.fetch("courses", [])
+    fetch_all_pages(COURSES_URL, "courses", query: { courseStates: "ACTIVE" })
   end
 
   def fetch_course_work(course_id)
-    response = with_token_refresh do |access_token|
-      HTTParty.get(
-        "https://classroom.googleapis.com/v1/courses/#{course_id}/courseWork",
-        headers: { "Authorization" => "Bearer #{access_token}" }
-      )
-    end
-
-    response.parsed_response.fetch("courseWork", [])
+    fetch_all_pages("#{COURSES_URL}/#{course_id}/courseWork", "courseWork")
   end
 
   private
+
+  # A Classroom API pagina as listagens: cada resposta traz até `pageSize` itens
+  # e, havendo mais, um `nextPageToken` a ser reenviado como `pageToken`.
+  def fetch_all_pages(url, items_key, query: {})
+    items      = []
+    page_token = nil
+
+    loop do
+      body = fetch_page(url, query, page_token)
+      items.concat(body.fetch(items_key, []))
+      page_token = body["nextPageToken"]
+      break if page_token.nil?
+    end
+
+    items
+  end
+
+  def fetch_page(url, query, page_token)
+    response = with_token_refresh do |access_token|
+      HTTParty.get(
+        url,
+        headers: { "Authorization" => "Bearer #{access_token}" },
+        query: query.merge(pageSize: PAGE_SIZE, pageToken: page_token).compact,
+        timeout: REQUEST_TIMEOUT
+      )
+    end
+
+    response.parsed_response
+  end
 
   # Yields the current access_token to the block (which performs the HTTP call).
   # On a 401, attempts a single token refresh and retries the call once.
@@ -46,8 +62,6 @@ class GoogleClassroomService
       refresh_access_token!
       response = yield(@user.google_access_token)
       return response if response.success?
-
-      raise_for_response(response)
     end
 
     raise_for_response(response)

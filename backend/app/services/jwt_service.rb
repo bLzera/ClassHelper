@@ -1,7 +1,7 @@
 require "jwt"
 
 module JwtService
-  ALGORITHM   = "HS256"
+  ALGORITHM   = "HS256".freeze
   EXPIRY_SECS = 30 * 60
 
   module_function

@@ -24,7 +24,7 @@ RSpec.describe "Courses", type: :request do
         stub_request(:get, "https://classroom.googleapis.com/v1/courses")
           .with(
             headers: { "Authorization" => "Bearer fake-google-token" },
-            query: { courseStates: "ACTIVE" }
+            query: hash_including(courseStates: "ACTIVE")
           )
           .to_return(status: 200, body: classroom_payload,
                      headers: { "Content-Type" => "application/json" })
@@ -53,13 +53,39 @@ RSpec.describe "Courses", type: :request do
 
         updated_payload = { courses: [{ id: "c1", name: "Cálculo I — Revisado", section: "T1" }] }.to_json
         stub_request(:get, "https://classroom.googleapis.com/v1/courses")
-          .with(query: { courseStates: "ACTIVE" })
+          .with(query: hash_including(courseStates: "ACTIVE"))
           .to_return(status: 200, body: updated_payload,
                      headers: { "Content-Type" => "application/json" })
 
         post "/courses/sync", headers: headers
 
         expect(Course.find_by(google_course_id: "c1").name).to eq("Cálculo I — Revisado")
+      end
+    end
+
+    context "quando a resposta do Classroom vem paginada" do
+      before do
+        stub_request(:get, "https://classroom.googleapis.com/v1/courses")
+          .with(query: { courseStates: "ACTIVE", pageSize: "100" })
+          .to_return(status: 200,
+                     body: { courses: [{ id: "c1", name: "Cálculo I" }],
+                             nextPageToken: "tok-2" }.to_json,
+                     headers: { "Content-Type" => "application/json" })
+
+        stub_request(:get, "https://classroom.googleapis.com/v1/courses")
+          .with(query: { courseStates: "ACTIVE", pageSize: "100", pageToken: "tok-2" })
+          .to_return(status: 200,
+                     body: { courses: [{ id: "c2", name: "Álgebra Linear" }] }.to_json,
+                     headers: { "Content-Type" => "application/json" })
+      end
+
+      it "acumula os cursos de todas as páginas" do
+        post "/courses/sync", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body["synced"]).to eq(2)
+        expect(body["courses"].pluck("google_course_id")).to match_array(%w[c1 c2])
       end
     end
 
@@ -74,7 +100,7 @@ RSpec.describe "Courses", type: :request do
     context "quando a API do Classroom retorna erro não-401" do
       before do
         stub_request(:get, "https://classroom.googleapis.com/v1/courses")
-          .with(query: { courseStates: "ACTIVE" })
+          .with(query: hash_including(courseStates: "ACTIVE"))
           .to_return(status: 500, body: '{"error":"internal"}',
                      headers: { "Content-Type" => "application/json" })
       end
@@ -97,7 +123,7 @@ RSpec.describe "Courses", type: :request do
         # 1ª chamada com o token expirado → 401
         stub_request(:get, "https://classroom.googleapis.com/v1/courses")
           .with(headers: { "Authorization" => "Bearer expired-token" },
-                query: { courseStates: "ACTIVE" })
+                query: hash_including(courseStates: "ACTIVE"))
           .to_return(status: 401, body: '{"error":"invalid_credentials"}',
                      headers: { "Content-Type" => "application/json" })
 
@@ -112,7 +138,7 @@ RSpec.describe "Courses", type: :request do
         # retry com o novo token → sucesso
         stub_request(:get, "https://classroom.googleapis.com/v1/courses")
           .with(headers: { "Authorization" => "Bearer novo-token" },
-                query: { courseStates: "ACTIVE" })
+                query: hash_including(courseStates: "ACTIVE"))
           .to_return(status: 200, body: classroom_payload,
                      headers: { "Content-Type" => "application/json" })
       end
@@ -139,7 +165,7 @@ RSpec.describe "Courses", type: :request do
 
       before do
         stub_request(:get, "https://classroom.googleapis.com/v1/courses")
-          .with(query: { courseStates: "ACTIVE" })
+          .with(query: hash_including(courseStates: "ACTIVE"))
           .to_return(status: 401, body: '{"error":"invalid_credentials"}',
                      headers: { "Content-Type" => "application/json" })
 

@@ -27,17 +27,17 @@ RSpec.describe JwtService do
 
   describe ".decode_access_token" do
     it "raises JWT::DecodeError for invalid token" do
-      expect {
+      expect do
         described_class.decode_access_token("invalid.token.here", secret)
-      }.to raise_error(JWT::DecodeError)
+      end.to raise_error(JWT::DecodeError)
     end
 
     it "raises JWT::ExpiredSignature for expired token" do
       expired_payload = payload.merge("exp" => Time.now.utc.to_i - 1)
       token = JWT.encode(expired_payload, secret, "HS256")
-      expect {
+      expect do
         described_class.decode_access_token(token, secret)
-      }.to raise_error(JWT::ExpiredSignature)
+      end.to raise_error(JWT::ExpiredSignature)
     end
   end
 end

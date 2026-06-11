@@ -17,6 +17,8 @@ class AssignmentsController < ApplicationController
 
     assignment.update!(manual_priority: params[:manual_priority])
     render json: assignment.as_json(only: %i[id title manual_priority auto_priority due_date state course_id])
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RangeError, ActiveModel::RangeError
+    render json: { error: "invalid_priority" }, status: :unprocessable_content
   end
 
   private

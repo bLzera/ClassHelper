@@ -53,6 +53,53 @@ RSpec.describe "Assignments", type: :request do
       end
     end
 
+    context "com manual_priority inválida" do
+      let(:assignment) do
+        course = create(:course, user: user)
+        create(:assignment, user: user, course: course)
+      end
+
+      def patch_priority(value)
+        patch "/assignments/#{assignment.id}/priority",
+              params: { manual_priority: value }, headers: headers
+      end
+
+      it "retorna 422 para valor não numérico" do
+        patch_priority("abc")
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to eq("invalid_priority")
+      end
+
+      it "retorna 422 para zero" do
+        patch_priority(0)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to eq("invalid_priority")
+      end
+
+      it "retorna 422 para valor negativo" do
+        patch_priority(-1)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to eq("invalid_priority")
+      end
+
+      it "retorna 422 para valor fora do alcance de integer" do
+        patch_priority(99_999_999_999_999)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to eq("invalid_priority")
+      end
+
+      it "não altera a prioridade persistida" do
+        assignment.update!(manual_priority: 5)
+        patch_priority("abc")
+
+        expect(assignment.reload.manual_priority).to eq(5)
+      end
+    end
+
     context "quando o assignment pertence a outro usuário" do
       let(:other_assignment) do
         other_user = create(:user)
@@ -109,7 +156,8 @@ RSpec.describe "Assignments", type: :request do
 
     def stub_course_work(course_id, work)
       stub_request(:get, "https://classroom.googleapis.com/v1/courses/#{course_id}/courseWork")
-        .with(headers: { "Authorization" => "Bearer fake-google-token" })
+        .with(headers: { "Authorization" => "Bearer fake-google-token" },
+              query: hash_including(pageSize: "100"))
         .to_return(status: 200, body: { courseWork: work }.to_json,
                    headers: { "Content-Type" => "application/json" })
     end
@@ -172,9 +220,35 @@ RSpec.describe "Assignments", type: :request do
       end
     end
 
+    context "quando o courseWork vem paginado" do
+      before do
+        stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
+          .with(query: { pageSize: "100" })
+          .to_return(status: 200,
+                     body: { courseWork: [{ id: "a1", title: "Lista 1", state: "PUBLISHED" }],
+                             nextPageToken: "tok-2" }.to_json,
+                     headers: { "Content-Type" => "application/json" })
+
+        stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
+          .with(query: { pageSize: "100", pageToken: "tok-2" })
+          .to_return(status: 200,
+                     body: { courseWork: [{ id: "a2", title: "Lista 2", state: "PUBLISHED" }] }.to_json,
+                     headers: { "Content-Type" => "application/json" })
+      end
+
+      it "acumula os assignments de todas as páginas" do
+        post "/assignments/sync", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["synced"]).to eq(2)
+        expect(Assignment.pluck(:google_assignment_id)).to match_array(%w[a1 a2])
+      end
+    end
+
     context "quando a API do Classroom retorna erro não-401" do
       before do
         stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
+          .with(query: hash_including(pageSize: "100"))
           .to_return(status: 500, body: '{"error":"internal"}',
                      headers: { "Content-Type" => "application/json" })
       end
@@ -197,7 +271,8 @@ RSpec.describe "Assignments", type: :request do
       before do
         # 1ª chamada com o token expirado → 401
         stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
-          .with(headers: { "Authorization" => "Bearer fake-google-token" })
+          .with(headers: { "Authorization" => "Bearer fake-google-token" },
+                query: hash_including(pageSize: "100"))
           .to_return(status: 401, body: '{"error":"invalid_credentials"}',
                      headers: { "Content-Type" => "application/json" })
 
@@ -211,7 +286,8 @@ RSpec.describe "Assignments", type: :request do
 
         # retry com o novo token → sucesso
         stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
-          .with(headers: { "Authorization" => "Bearer novo-token" })
+          .with(headers: { "Authorization" => "Bearer novo-token" },
+                query: hash_including(pageSize: "100"))
           .to_return(status: 200,
                      body: { courseWork: [{ id: "a1", title: "Lista 1", state: "PUBLISHED" }] }.to_json,
                      headers: { "Content-Type" => "application/json" })
@@ -239,6 +315,7 @@ RSpec.describe "Assignments", type: :request do
 
       before do
         stub_request(:get, "https://classroom.googleapis.com/v1/courses/c1/courseWork")
+          .with(query: hash_including(pageSize: "100"))
           .to_return(status: 401, body: '{"error":"invalid_credentials"}',
                      headers: { "Content-Type" => "application/json" })
 

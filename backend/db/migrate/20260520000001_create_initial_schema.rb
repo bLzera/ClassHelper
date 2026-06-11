@@ -28,7 +28,7 @@ class CreateInitialSchema < ActiveRecord::Migration[7.2]
       t.string  :title,                limit: 500, null: false
       t.text    :description
       t.datetime :due_date
-      t.string  :state,               limit: 50,  null: false, default: "CREATED"
+      t.string  :state, limit: 50, null: false, default: "CREATED"
       t.integer :manual_priority
       t.integer :auto_priority
       t.timestamps null: false

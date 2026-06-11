@@ -140,7 +140,7 @@ Os gates do crew (`crew/run-fe-tests.sh` / `crew/run-fe-lint.sh`) rodam `npm ci`
 | `GOOGLE_CLIENT_ID` | Client ID do Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | Client Secret do Google Cloud Console |
 | `GOOGLE_REDIRECT_URI` | URI de callback OAuth registrada no Google (padrão: `http://localhost:3000/auth/callback`) |
-| `CORS_ORIGINS` | Domínio do frontend para CORS (padrão: `http://localhost:5173`) |
+| `CORS_ORIGINS` | Origens permitidas para CORS, separadas por vírgula (padrão: `http://localhost:5173`) |
 | `FRONTEND_URL` | Base do SPA para onde o callback redireciona com o token (padrão: `http://localhost:5173`) — B-5 |
 
 ---
@@ -164,7 +164,7 @@ backend/
 │   └── services/
 │       ├── jwt_service.rb              # create_access_token / decode_access_token (HS256, 30 min)
 │       ├── google_oauth_service.rb     # authorization_url, exchange_code, fetch_userinfo
-│       └── google_classroom_service.rb # fetch_courses — GET /v1/courses (courseStates=ACTIVE)
+│       └── google_classroom_service.rb # fetch_courses / fetch_course_work — paginação (nextPageToken) + refresh de token
 ├── config/
 │   ├── routes.rb                       # todos os endpoints mapeados
 │   ├── database.yml
@@ -172,7 +172,8 @@ backend/
 ├── db/
 │   └── migrate/
 │       ├── 20260520000001_create_initial_schema.rb
-│       └── 20260524000001_add_unique_index_to_courses.rb  # índice único (user_id, google_course_id)
+│       ├── 20260524000001_add_unique_index_to_courses.rb      # índice único (user_id, google_course_id)
+│       └── 20260611000001_add_unique_index_to_assignments.rb  # índice único (user_id, course_id, google_assignment_id)
 └── spec/
     ├── factories/users.rb
     ├── requests/
@@ -201,14 +202,15 @@ backend/
 | `app/controllers/health_controller.rb` | `GET /health` → `{ status: "ok" }` |
 | `db/migrate/20260520000001_create_initial_schema.rb` | Cria tabelas users, courses, assignments com UUID PKs (pgcrypto) |
 | `db/migrate/20260524000001_add_unique_index_to_courses.rb` | Índice único em `(user_id, google_course_id)` |
+| `db/migrate/20260611000001_add_unique_index_to_assignments.rb` | Índice único em `(user_id, course_id, google_assignment_id)` |
 | `spec/factories/users.rb` | Factory FactoryBot para User |
 | `spec/requests/health_spec.rb` | Teste do `GET /health` |
-| `spec/requests/courses_spec.rb` | 6 testes do `POST /courses/sync` (WebMock) |
+| `spec/requests/courses_spec.rb` | Testes do `POST /courses/sync` — sucesso, paginação, refresh, erros (WebMock) |
 | `spec/services/jwt_service_spec.rb` | 5 testes do JwtService (encode, decode, expiração, erros) |
 | `app/controllers/assignments_controller.rb` | `PATCH /assignments/:id/priority` — prioridade manual (C-1) |
 | `spec/factories/courses.rb` | Factory FactoryBot para Course |
 | `spec/factories/assignments.rb` | Factory FactoryBot para Assignment |
-| `spec/requests/assignments_spec.rb` | 8 testes do `PATCH /assignments/:id/priority` |
+| `spec/requests/assignments_spec.rb` | Testes do `PATCH /assignments/:id/priority` (incl. 422) e do `POST /assignments/sync` (incl. paginação) |
 
 ### MVP completo ✅
 
@@ -252,7 +254,7 @@ _Backend de API do MVP completo (B-5 ✅) e frontend completo (F-6 ✅). MVP ent
 - Response 200: `{ "id": UUID, "email": String, "name": String, "created_at": ISO8601 }`
 - Response 401: `{ "error": "unauthorized" }`
 
-### `POST /courses/sync` (Épico B-1 — pendente)
+### `POST /courses/sync` (Épico B-1 — ✅ feito)
 - Auth: `Bearer <jwt>` obrigatório
 - Lógica: chama `GET https://classroom.googleapis.com/v1/courses` com o access_token do usuário; upsert via `google_course_id`
 - Response 200: `{ "synced": Integer, "courses": Array }`
@@ -262,12 +264,13 @@ _Backend de API do MVP completo (B-5 ✅) e frontend completo (F-6 ✅). MVP ent
 - Lógica: para cada course, chama `GET https://classroom.googleapis.com/v1/courses/:id/courseWork`; upsert; calcula `auto_priority` por prazo
 - Response 200: `{ "synced": Integer }`
 
-### `PATCH /assignments/:id/priority` (Épico C-1 — pendente)
+### `PATCH /assignments/:id/priority` (Épico C-1 — ✅ feito)
 - Auth: `Bearer <jwt>` obrigatório
-- Body: `{ "manual_priority": Integer }`
+- Body: `{ "manual_priority": Integer }` — inteiro ≥ 1, ou `null` para limpar
 - Lógica: `Assignment.find_by(id:, user: current_user)` → atualiza `manual_priority`
 - Response 200: assignment atualizado
 - Response 404: `{ "error": "not_found" }`
+- Response 422: `{ "error": "invalid_priority" }` — valor não inteiro, < 1 ou fora do int4
 
 ### `GET /dashboard` (Épico F-1 — ✅ feito)
 - Auth: `Bearer <jwt>` obrigatório

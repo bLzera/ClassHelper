@@ -13,6 +13,20 @@ AllCops:
 Style/Documentation:
   Enabled: false
 
+# Migrations geram métodos longos por natureza (criação do schema inicial).
+Metrics/AbcSize:
+  Exclude:
+    - "db/migrate/*"
+
+Metrics/MethodLength:
+  Exclude:
+    - "db/migrate/*"
+
+# `abort` no rails_helper é o boilerplate padrão do rspec-rails.
+Rails/Exit:
+  Exclude:
+    - "spec/rails_helper.rb"
+
 Style/FrozenStringLiteralComment:
   Enabled: false
 

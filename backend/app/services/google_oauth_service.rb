@@ -1,9 +1,10 @@
 require "httparty"
 
 class GoogleOauthService
-  AUTH_BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth".freeze
-  TOKEN_URL     = "https://oauth2.googleapis.com/token".freeze
-  USERINFO_URL  = "https://www.googleapis.com/oauth2/v3/userinfo".freeze
+  AUTH_BASE_URL   = "https://accounts.google.com/o/oauth2/v2/auth".freeze
+  TOKEN_URL       = "https://oauth2.googleapis.com/token".freeze
+  USERINFO_URL    = "https://www.googleapis.com/oauth2/v3/userinfo".freeze
+  REQUEST_TIMEOUT = 10
 
   class RefreshError < StandardError; end
 
@@ -38,7 +39,7 @@ class GoogleOauthService
   end
 
   def exchange_code(code)
-    response = HTTParty.post(TOKEN_URL, body: {
+    response = HTTParty.post(TOKEN_URL, timeout: REQUEST_TIMEOUT, body: {
                                code: code,
                                client_id: @client_id,
                                client_secret: @client_secret,
@@ -51,7 +52,7 @@ class GoogleOauthService
   end
 
   def refresh_access_token(refresh_token)
-    response = HTTParty.post(TOKEN_URL, body: {
+    response = HTTParty.post(TOKEN_URL, timeout: REQUEST_TIMEOUT, body: {
                                client_id: @client_id,
                                client_secret: @client_secret,
                                refresh_token: refresh_token,
@@ -64,7 +65,8 @@ class GoogleOauthService
 
   def fetch_userinfo(access_token)
     response = HTTParty.get(USERINFO_URL,
-                            headers: { "Authorization" => "Bearer #{access_token}" })
+                            headers: { "Authorization" => "Bearer #{access_token}" },
+                            timeout: REQUEST_TIMEOUT)
     raise "Google userinfo fetch failed: #{response.body}" unless response.success?
 
     response.parsed_response

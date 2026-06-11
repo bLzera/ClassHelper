@@ -7,17 +7,15 @@ class ApplicationController < ActionController::API
 
     payload = JwtService.decode_access_token(token, ENV.fetch("SECRET_KEY_BASE"))
     @current_user = User.find(payload["user_id"])
-  rescue JWT::DecodeError, JWT::ExpiredSignature, ActiveRecord::RecordNotFound
+  rescue JWT::DecodeError, ActiveRecord::RecordNotFound
     render_unauthorized
   end
 
-  def current_user
-    @current_user
-  end
+  attr_reader :current_user
 
   def extract_bearer_token
     header = request.headers["Authorization"]
-    header&.split(" ")&.last if header&.start_with?("Bearer ")
+    header && header[/\ABearer (.+)\z/, 1]
   end
 
   def render_unauthorized
