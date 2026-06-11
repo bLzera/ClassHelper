@@ -166,7 +166,8 @@ RSpec.describe "Assignments", type: :request do
       before do
         stub_course_work("c1", [
                            { id: "a1", title: "Lista 1", description: "desc",
-                             dueDate: { year: 2026, month: 6, day: 1 }, state: "PUBLISHED" },
+                             dueDate: { year: 2026, month: 6, day: 1 }, state: "PUBLISHED",
+                             alternateLink: "https://classroom.google.com/c/c1/a/a1/details" },
                            { id: "a2", title: "Lista 2", state: "PUBLISHED" }
                          ])
       end
@@ -217,6 +218,34 @@ RSpec.describe "Assignments", type: :request do
         assignment = Assignment.find_by(google_assignment_id: "a2")
         expect(assignment.due_date).to be_nil
         expect(assignment.auto_priority).to be_nil
+      end
+
+      it "salva o alternate_link vindo do courseWork" do
+        post "/assignments/sync", headers: headers
+
+        assignment = Assignment.find_by(google_assignment_id: "a1")
+        expect(assignment.alternate_link).to eq("https://classroom.google.com/c/c1/a/a1/details")
+      end
+
+      it "deixa alternate_link nil quando o courseWork não tem alternateLink" do
+        post "/assignments/sync", headers: headers
+
+        assignment = Assignment.find_by(google_assignment_id: "a2")
+        expect(assignment.alternate_link).to be_nil
+      end
+
+      it "atualiza o alternate_link de assignment existente em um re-sync" do
+        post "/assignments/sync", headers: headers
+
+        stub_course_work("c1", [
+                           { id: "a1", title: "Lista 1", description: "desc",
+                             dueDate: { year: 2026, month: 6, day: 1 }, state: "PUBLISHED",
+                             alternateLink: "https://classroom.google.com/c/c1/a/a1/novo" }
+                         ])
+        post "/assignments/sync", headers: headers
+
+        assignment = Assignment.find_by(google_assignment_id: "a1")
+        expect(assignment.alternate_link).to eq("https://classroom.google.com/c/c1/a/a1/novo")
       end
     end
 
