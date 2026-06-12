@@ -21,6 +21,16 @@ class GoogleClassroomService
     fetch_all_pages("#{COURSES_URL}/#{course_id}/courseWork", "courseWork")
   end
 
+  # O wildcard "-" como courseWorkId retorna as submissões de TODAS as tarefas
+  # do curso numa só chamada (economiza quota). `userId=me` restringe ao usuário.
+  def fetch_submissions(course_id)
+    fetch_all_pages(
+      "#{COURSES_URL}/#{course_id}/courseWork/-/studentSubmissions",
+      "studentSubmissions",
+      query: { userId: "me" }
+    )
+  end
+
   private
 
   # A Classroom API pagina as listagens: cada resposta traz até `pageSize` itens

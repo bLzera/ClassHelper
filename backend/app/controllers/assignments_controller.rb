@@ -29,6 +29,13 @@ class AssignmentsController < ApplicationController
       # tokens do usuário e essa limpeza não pode ser desfeita por rollback.
       course_work = service.fetch_course_work(course.google_course_id)
       upsert_course_work(course, course_work)
+
+      # O estado de entrega do aluno vive em studentSubmissions — buscado fora
+      # da transação acima e aplicado por cima do estado de publicação do prof.
+      submissions = service.fetch_submissions(course.google_course_id)
+      apply_submission_states(course, submissions)
+
+      course_work.size
     end
   end
 
@@ -36,7 +43,30 @@ class AssignmentsController < ApplicationController
     ActiveRecord::Base.transaction do
       course_work.each { |cw| build_assignment(course, cw) }
     end
-    course_work.size
+  end
+
+  # Casa cada submissão ao assignment pelo courseWorkId (== google_assignment_id)
+  # e grava o estado de entrega real. Tarefa sem submissão permanece "CREATED".
+  def apply_submission_states(course, submissions)
+    return if submissions.empty?
+
+    ActiveRecord::Base.transaction do
+      submissions.each { |submission| apply_submission_state(course, submission) }
+    end
+  end
+
+  def apply_submission_state(course, submission)
+    assignment = course.assignments.find_by(
+      google_assignment_id: submission["courseWorkId"],
+      user: current_user
+    )
+    return if assignment.nil?
+
+    assignment.update!(state: map_submission_state(submission["state"]))
+  end
+
+  def map_submission_state(state)
+    Assignment::VALID_STATES.include?(state) ? state : "CREATED"
   end
 
   def build_assignment(course, course_work)

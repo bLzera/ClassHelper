@@ -162,6 +162,18 @@ RSpec.describe "Assignments", type: :request do
                    headers: { "Content-Type" => "application/json" })
     end
 
+    def submissions_url(course_id)
+      "https://classroom.googleapis.com/v1/courses/#{course_id}/courseWork/-/studentSubmissions"
+    end
+
+    def stub_submissions(course_id, submissions, token: "fake-google-token")
+      stub_request(:get, submissions_url(course_id))
+        .with(headers: { "Authorization" => "Bearer #{token}" },
+              query: hash_including(userId: "me"))
+        .to_return(status: 200, body: { studentSubmissions: submissions }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+    end
+
     context "com token válido e Classroom respondendo com sucesso" do
       before do
         stub_course_work("c1", [
@@ -170,6 +182,7 @@ RSpec.describe "Assignments", type: :request do
                              alternateLink: "https://classroom.google.com/c/c1/a/a1/details" },
                            { id: "a2", title: "Lista 2", state: "PUBLISHED" }
                          ])
+        stub_submissions("c1", [])
       end
 
       it "retorna 200 com synced" do
@@ -263,6 +276,8 @@ RSpec.describe "Assignments", type: :request do
           .to_return(status: 200,
                      body: { courseWork: [{ id: "a2", title: "Lista 2", state: "PUBLISHED" }] }.to_json,
                      headers: { "Content-Type" => "application/json" })
+
+        stub_submissions("c1", [])
       end
 
       it "acumula os assignments de todas as páginas" do
@@ -320,6 +335,9 @@ RSpec.describe "Assignments", type: :request do
           .to_return(status: 200,
                      body: { courseWork: [{ id: "a1", title: "Lista 1", state: "PUBLISHED" }] }.to_json,
                      headers: { "Content-Type" => "application/json" })
+
+        # submissões já com o token renovado
+        stub_submissions("c1", [], token: "novo-token")
       end
 
       it "renova o token e retorna 200 com synced" do
@@ -372,6 +390,129 @@ RSpec.describe "Assignments", type: :request do
         expect(response).to have_http_status(:unauthorized)
         expect(response.parsed_body["error"]).to eq("unauthorized")
       end
+    end
+
+    context "estado de submissão (studentSubmissions)" do
+      before do
+        stub_course_work("c1", [
+                           { id: "a1", title: "Lista 1", state: "PUBLISHED" },
+                           { id: "a2", title: "Lista 2", state: "PUBLISHED" }
+                         ])
+      end
+
+      it "aplica TURNED_IN quando a submissão está entregue" do
+        stub_submissions("c1", [{ id: "s1", courseWorkId: "a1", state: "TURNED_IN" }])
+
+        post "/assignments/sync", headers: headers
+
+        expect(Assignment.find_by(google_assignment_id: "a1").state).to eq("TURNED_IN")
+      end
+
+      it "mantém CREATED quando a submissão está NEW" do
+        stub_submissions("c1", [{ id: "s1", courseWorkId: "a1", state: "NEW" }])
+
+        post "/assignments/sync", headers: headers
+
+        expect(Assignment.find_by(google_assignment_id: "a1").state).to eq("CREATED")
+      end
+
+      it "mantém CREATED quando a submissão está CREATED" do
+        stub_submissions("c1", [{ id: "s1", courseWorkId: "a1", state: "CREATED" }])
+
+        post "/assignments/sync", headers: headers
+
+        expect(Assignment.find_by(google_assignment_id: "a1").state).to eq("CREATED")
+      end
+
+      it "aplica RETURNED quando a submissão foi devolvida" do
+        stub_submissions("c1", [{ id: "s1", courseWorkId: "a1", state: "RETURNED" }])
+
+        post "/assignments/sync", headers: headers
+
+        expect(Assignment.find_by(google_assignment_id: "a1").state).to eq("RETURNED")
+      end
+
+      it "deixa CREATED para assignment sem submissão correspondente" do
+        stub_submissions("c1", [{ id: "s1", courseWorkId: "a1", state: "TURNED_IN" }])
+
+        post "/assignments/sync", headers: headers
+
+        expect(Assignment.find_by(google_assignment_id: "a2").state).to eq("CREATED")
+      end
+
+      it "deixa CREATED quando não há submissões no curso" do
+        stub_submissions("c1", [])
+
+        post "/assignments/sync", headers: headers
+
+        aggregate_failures do
+          expect(Assignment.find_by(google_assignment_id: "a1").state).to eq("CREATED")
+          expect(Assignment.find_by(google_assignment_id: "a2").state).to eq("CREATED")
+        end
+      end
+
+      it "atualiza o estado de um assignment já entregue para CREATED em re-sync (reclaim)" do
+        stub_submissions("c1", [{ id: "s1", courseWorkId: "a1", state: "TURNED_IN" }])
+        post "/assignments/sync", headers: headers
+        expect(Assignment.find_by(google_assignment_id: "a1").state).to eq("TURNED_IN")
+
+        stub_submissions("c1", [{ id: "s1", courseWorkId: "a1", state: "RECLAIMED_BY_STUDENT" }])
+        post "/assignments/sync", headers: headers
+
+        expect(Assignment.find_by(google_assignment_id: "a1").state).to eq("RECLAIMED_BY_STUDENT")
+      end
+    end
+
+    context "quando a API de submissões retorna erro não-401" do
+      before do
+        stub_course_work("c1", [{ id: "a1", title: "Lista 1", state: "PUBLISHED" }])
+
+        stub_request(:get, submissions_url("c1"))
+          .with(query: hash_including(userId: "me"))
+          .to_return(status: 500, body: '{"error":"internal"}',
+                     headers: { "Content-Type" => "application/json" })
+      end
+
+      it "retorna 502 com classroom_api_error" do
+        post "/assignments/sync", headers: headers
+
+        expect(response).to have_http_status(:bad_gateway)
+        expect(response.parsed_body["error"]).to eq("classroom_api_error")
+        expect(response.parsed_body["message"]).to be_a(String)
+      end
+    end
+  end
+
+  describe "GoogleClassroomService#fetch_submissions" do
+    let(:user)    { create(:user, google_access_token: "fake-google-token") }
+    let(:service) { GoogleClassroomService.new(user: user) }
+
+    def submissions_url(course_id)
+      "https://classroom.googleapis.com/v1/courses/#{course_id}/courseWork/-/studentSubmissions"
+    end
+
+    it "faz GET no endpoint de studentSubmissions com userId=me" do
+      stub = stub_request(:get, submissions_url("c1"))
+             .with(headers: { "Authorization" => "Bearer fake-google-token" },
+                   query: hash_including(userId: "me"))
+             .to_return(status: 200,
+                        body: { studentSubmissions: [{ id: "s1", courseWorkId: "a1",
+                                                       state: "TURNED_IN" }] }.to_json,
+                        headers: { "Content-Type" => "application/json" })
+
+      result = service.fetch_submissions("c1")
+
+      expect(stub).to have_been_requested
+      expect(result.pluck("courseWorkId")).to eq(["a1"])
+    end
+
+    it "retorna [] quando não há studentSubmissions na resposta" do
+      stub_request(:get, submissions_url("c1"))
+        .with(query: hash_including(userId: "me"))
+        .to_return(status: 200, body: {}.to_json,
+                   headers: { "Content-Type" => "application/json" })
+
+      expect(service.fetch_submissions("c1")).to eq([])
     end
   end
 end
