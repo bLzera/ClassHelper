@@ -309,7 +309,7 @@ _Backend de API do MVP completo (B-5 ✅) e frontend completo (F-6 ✅). MVP ent
 | B | B-6 | ✅ Feito | — | `GET /courses` — lista cursos com `pending_count` + `next_due_date` |
 | B | B-7 | ✅ Feito | — | Capturar `alternate_link` do assignment no sync + expor nos serializers |
 | B | B-8 | ✅ Feito | — | Sync de submissões (`studentSubmissions`) → estado real (`TURNED_IN`) |
-| B | B-9 | Pendente | B-8 | Filtro de estado (`/dashboard`, `/courses/:id/assignments`) + `GET /assignments/:id` |
+| B | B-9 | ✅ Feito | B-8 | Filtro de estado (`/dashboard`, `/courses/:id/assignments`) + `GET /assignments/:id` |
 | B | B-10 | Pendente | B-6, B-8 | `POST /sync` orquestrado (cursos+tarefas+submissões) com throttle de 1h + force manual |
 | F | F-7 | Pendente | — | Frontend — app shell modular (layout + sidebar + sessão); revisão geral do FE |
 | F | F-8 | Pendente | F-7, B-10 | Frontend — auto-sync no login (`<Suspense>`/background) + "Sincronizar agora" |
