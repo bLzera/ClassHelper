@@ -132,6 +132,90 @@ RSpec.describe "Courses", type: :request do
     end
   end
 
+  describe "GET /courses/:id/assignments" do
+    let(:course) { create(:course, user: user) }
+
+    context "com token válido (pendentes, default)" do
+      it "retorna só os assignments CREATED do curso, ordenados por prioridade efetiva" do
+        low  = create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 10)
+        high = create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 1)
+        create(:assignment, user: user, course: course, state: "TURNED_IN", auto_priority: 1)
+
+        get "/courses/#{course.id}/assignments", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        ids = response.parsed_body["assignments"].pluck("id")
+        expect(ids).to eq([high.id, low.id])
+      end
+
+      it "retorna os campos esperados em cada assignment" do
+        create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 1)
+
+        get "/courses/#{course.id}/assignments", headers: headers
+
+        expect(response.parsed_body["assignments"].first.keys).to match_array(
+          %w[id title description due_date state manual_priority auto_priority course_id alternate_link]
+        )
+      end
+
+      it "não inclui assignments de outro curso do mesmo usuário" do
+        own   = create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 1)
+        other = create(:course, user: user)
+        create(:assignment, user: user, course: other, state: "CREATED", auto_priority: 1)
+
+        get "/courses/#{course.id}/assignments", headers: headers
+
+        ids = response.parsed_body["assignments"].pluck("id")
+        expect(ids).to eq([own.id])
+      end
+    end
+
+    context "com completed=true" do
+      it "retorna só os TURNED_IN, ordenados por due_date DESC NULLS LAST" do
+        oldest = create(:assignment, user: user, course: course, state: "TURNED_IN",
+                                     due_date: 1.day.from_now)
+        newest = create(:assignment, user: user, course: course, state: "TURNED_IN",
+                                     due_date: 10.days.from_now)
+        create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 1)
+
+        get "/courses/#{course.id}/assignments", params: { completed: "true" }, headers: headers
+
+        ids = response.parsed_body["assignments"].pluck("id")
+        expect(ids).to eq([newest.id, oldest.id])
+      end
+    end
+
+    context "quando o curso é de outro usuário" do
+      it "retorna 404" do
+        other_user   = create(:user)
+        other_course = create(:course, user: other_user)
+
+        get "/courses/#{other_course.id}/assignments", headers: headers
+
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body["error"]).to eq("not_found")
+      end
+    end
+
+    context "quando o curso não existe" do
+      it "retorna 404" do
+        get "/courses/00000000-0000-0000-0000-000000000000/assignments", headers: headers
+
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body["error"]).to eq("not_found")
+      end
+    end
+
+    context "sem token de autenticação" do
+      it "retorna 401" do
+        get "/courses/#{course.id}/assignments"
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(response.parsed_body["error"]).to eq("unauthorized")
+      end
+    end
+  end
+
   describe "POST /courses/sync" do
     context "com token válido e Classroom respondendo com sucesso" do
       let(:classroom_payload) do

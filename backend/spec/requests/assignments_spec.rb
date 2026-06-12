@@ -9,6 +9,74 @@ RSpec.describe "Assignments", type: :request do
   before { ENV["SECRET_KEY_BASE"] = secret }
   after  { ENV.delete("SECRET_KEY_BASE") }
 
+  describe "GET /assignments/:id" do
+    context "com token válido e assignment pertencente ao usuário" do
+      let(:assignment) do
+        course = create(:course, user: user, name: "Cálculo I")
+        create(:assignment, user: user, course: course, title: "Lista 1",
+                            description: "resolver", state: "CREATED",
+                            manual_priority: 2, auto_priority: 5,
+                            due_date: Date.new(2026, 6, 30),
+                            alternate_link: "https://classroom.google.com/c/c1/a/a1/details")
+      end
+
+      it "retorna 200 com o detalhe completo do assignment" do
+        get "/assignments/#{assignment.id}", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["assignment"].keys).to match_array(
+          %w[id title description due_date state manual_priority
+             auto_priority alternate_link course_id course_name]
+        )
+      end
+
+      it "inclui o course_name e o alternate_link" do
+        get "/assignments/#{assignment.id}", headers: headers
+
+        body = response.parsed_body["assignment"]
+        aggregate_failures do
+          expect(body["id"]).to eq(assignment.id)
+          expect(body["course_id"]).to eq(assignment.course_id)
+          expect(body["course_name"]).to eq("Cálculo I")
+          expect(body["alternate_link"]).to eq("https://classroom.google.com/c/c1/a/a1/details")
+        end
+      end
+    end
+
+    context "quando o assignment pertence a outro usuário" do
+      let(:other_assignment) do
+        other_user = create(:user)
+        course = create(:course, user: other_user)
+        create(:assignment, user: other_user, course: course)
+      end
+
+      it "retorna 404" do
+        get "/assignments/#{other_assignment.id}", headers: headers
+
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body["error"]).to eq("not_found")
+      end
+    end
+
+    context "quando o id não existe" do
+      it "retorna 404" do
+        get "/assignments/00000000-0000-0000-0000-000000000000", headers: headers
+
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body["error"]).to eq("not_found")
+      end
+    end
+
+    context "sem token de autenticação" do
+      it "retorna 401" do
+        get "/assignments/00000000-0000-0000-0000-000000000000"
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(response.parsed_body["error"]).to eq("unauthorized")
+      end
+    end
+  end
+
   describe "PATCH /assignments/:id/priority" do
     context "com token válido e assignment pertencente ao usuário" do
       let(:assignment) do

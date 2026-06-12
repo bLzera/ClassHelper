@@ -8,8 +8,22 @@ class CoursesController < ApplicationController
                       "AND assignments.due_date IS NOT NULL) AS next_due_date".freeze
   private_constant :PENDING_COUNT_SQL, :NEXT_DUE_DATE_SQL
 
+  ASSIGNMENT_FIELDS = %i[id title description due_date state
+                         manual_priority auto_priority course_id alternate_link].freeze
+  private_constant :ASSIGNMENT_FIELDS
+
   def index
     render json: { courses: courses_with_aggregates.map { |course| serialize_course(course) } }, status: :ok
+  end
+
+  def assignments
+    course = current_user.courses.find_by(id: params[:id])
+    return render json: { error: "not_found" }, status: :not_found if course.nil?
+
+    completed = ActiveModel::Type::Boolean.new.cast(params[:completed]) || false
+    assignments = course.assignments.by_completed(completed)
+
+    render json: { assignments: assignments.as_json(only: ASSIGNMENT_FIELDS) }, status: :ok
   end
 
   def sync

@@ -82,6 +82,55 @@ RSpec.describe "Dashboard", type: :request do
       end
     end
 
+    context "com completed=false explícito" do
+      it "retorna só os assignments CREATED, ordenados por prioridade efetiva" do
+        low  = create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 10)
+        high = create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 1)
+        create(:assignment, user: user, course: course, state: "TURNED_IN", auto_priority: 1)
+
+        get "/dashboard", params: { completed: "false" }, headers: headers
+
+        ids = response.parsed_body["assignments"].pluck("id")
+        expect(ids).to eq([high.id, low.id])
+      end
+    end
+
+    context "com completed=true" do
+      it "retorna só os assignments TURNED_IN" do
+        turned_in = create(:assignment, user: user, course: course, state: "TURNED_IN",
+                                        due_date: 5.days.from_now)
+        create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 1)
+        create(:assignment, user: user, course: course, state: "RETURNED", due_date: 1.day.from_now)
+
+        get "/dashboard", params: { completed: "true" }, headers: headers
+
+        ids = response.parsed_body["assignments"].pluck("id")
+        expect(ids).to eq([turned_in.id])
+      end
+
+      it "ordena os concluídos por due_date DESC NULLS LAST" do
+        turned_in = ->(due) { create(:assignment, user: user, course: course, state: "TURNED_IN", due_date: due) }
+        oldest  = turned_in.call(1.day.from_now)
+        newest  = turned_in.call(10.days.from_now)
+        mid     = turned_in.call(5.days.from_now)
+        no_date = turned_in.call(nil)
+
+        get "/dashboard", params: { completed: "true" }, headers: headers
+
+        ids = response.parsed_body["assignments"].pluck("id")
+        expect(ids).to eq([newest.id, mid.id, oldest.id, no_date.id])
+      end
+
+      it "retorna lista vazia quando não há concluídos" do
+        create(:assignment, user: user, course: course, state: "CREATED", auto_priority: 1)
+
+        get "/dashboard", params: { completed: "true" }, headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["assignments"]).to eq([])
+      end
+    end
+
     context "quando o usuário não tem assignments" do
       it "retorna 200 com lista vazia" do
         get "/dashboard", headers: headers
