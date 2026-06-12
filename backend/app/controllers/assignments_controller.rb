@@ -11,6 +11,13 @@ class AssignmentsController < ApplicationController
     render json: { error: "classroom_api_error", message: e.message }, status: :bad_gateway
   end
 
+  def show
+    assignment = current_user.assignments.includes(:course).find_by(id: params[:id])
+    return render json: { error: "not_found" }, status: :not_found if assignment.nil?
+
+    render json: { assignment: serialize_detail(assignment) }, status: :ok
+  end
+
   def update_priority
     assignment = Assignment.find_by(id: params[:id], user: current_user)
     return render json: { error: "not_found" }, status: :not_found if assignment.nil?
@@ -22,6 +29,13 @@ class AssignmentsController < ApplicationController
   end
 
   private
+
+  def serialize_detail(assignment)
+    assignment
+      .as_json(only: %i[id title description due_date state
+                        manual_priority auto_priority alternate_link course_id])
+      .merge("course_name" => assignment.course.name)
+  end
 
   def upsert_assignments(service)
     current_user.courses.find_each.sum do |course|
